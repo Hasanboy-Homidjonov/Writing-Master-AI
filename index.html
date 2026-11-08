@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="uz" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✍️</text></svg>" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Writing Master AI - Ingliz tili Writing Tekshirish Tizimi</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" crossorigin href="./assets/index.css">
+  </head>
+  <body class="h-full font-['Plus_Jakarta_Sans',sans-serif] bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased selection:bg-blue-500 selection:text-white transition-colors duration-200">
+    <div id="root" class="h-full"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script type="module">
+      // VS Code Live Server (Go Live) yoki GitHub Pages uchun avtomatik yuklovchi
+      if (!window.__vite_plugin_react_preamble_installed__) {
+        setTimeout(() => {
+          const root = document.getElementById('root');
+          if (!root || root.children.length === 0) {
+            const script = document.createElement('script');
+            script.type = 'module';
+            script.crossOrigin = 'anonymous';
+            script.src = './assets/index.js';
+            document.body.appendChild(script);
+          }
+        }, 100);
+      }
+    </script>
+  </body>
+</html>
