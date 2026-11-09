@@ -61,34 +61,26 @@ export const BOT_USERNAME =
   (import.meta as any).env?.VITE_TELEGRAM_BOT_USERNAME || 'Write_English_bot';
 
 /**
- * Hash orqali Telegram autentifikatsiyani tekshirish (#auth=code yoki eski #tg_auth=base64)
+ * Hash orqali Telegram autentifikatsiyani tekshirish (#auth=code)
+ * Xavfsizlik: Faqat server tomonidan tasdiqlangan sessiya kodlari qabul qilinadi.
  */
 export async function resolveTelegramHashAuth(): Promise<TelegramAuthUser | null> {
   try {
     if (typeof window === 'undefined') return null;
     const hash = window.location.hash || '';
 
-    // 1. Qisqa va chiroyli havola (#auth=auth_123 yoki #auth=success)
+    // Qisqa va xavfsiz havola (#auth=auth_123)
     if (hash.includes('auth=')) {
       const match = hash.match(/auth=([^&]+)/);
       const code = match ? match[1] : '';
-      if (code) {
-        const res = await checkTelegramLoginStatus(code === 'success' ? 'latest' : code);
+      if (code && code.startsWith('auth_')) {
+        const res = await checkTelegramLoginStatus(code);
         if (res.status === 'confirmed' && res.user) {
+          // Xavfsizlik: URL hash'dagi bir martalik kodni tozalab qo'yamiz
+          try {
+            window.history.replaceState(null, '', window.location.pathname + '#topics');
+          } catch (e) {}
           return res.user;
-        }
-      }
-    }
-
-    // 2. Base64 fallback (#tg_auth=base64)
-    if (hash.includes('tg_auth=')) {
-      const match = hash.match(/tg_auth=([^&]+)/);
-      if (match && match[1]) {
-        const rawB64 = decodeURIComponent(match[1]);
-        const decodedStr = decodeURIComponent(escape(atob(rawB64)));
-        const user = JSON.parse(decodedStr);
-        if (user && user.name) {
-          return user;
         }
       }
     }

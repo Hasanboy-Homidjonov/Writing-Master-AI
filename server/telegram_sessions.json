@@ -51,27 +51,7 @@
     },
     "confirmedAt": 1794188501.9561355
   },
-  "latest": {
-    "code": "auth_hh0jjrb",
-    "status": "confirmed",
-    "user": {
-      "id": "usr_tg_7034211289",
-      "telegramId": 7034211289,
-      "telegramUsername": "KhomidjonovH",
-      "name": "Hasanboy",
-      "email": "khomidjonovh@telegram.user",
-      "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
-      "level": "C1",
-      "coins": 2500,
-      "completedEssays": 40,
-      "streakDays": 14,
-      "rank": 1,
-      "role": "admin",
-      "joinedAt": "2026-11-09",
-      "isAuthenticated": true
-    },
-    "confirmedAt": 1794196136.3276255
-  },
+  "latest": null,
   "auth_rmmzhiwu": {
     "code": "auth_rmmzhiwu",
     "status": "pending",
@@ -5196,5 +5176,53 @@
     "status": "pending",
     "user": null,
     "createdAt": 1794196169.445523
+  },
+  "auth_uufz8pf": {
+    "code": "auth_uufz8pf",
+    "status": "confirmed",
+    "user": {
+      "id": "usr_tg_7034211289",
+      "telegramId": 7034211289,
+      "telegramUsername": "KhomidjonovH",
+      "name": "Hasanboy",
+      "email": "khomidjonovh@telegram.user",
+      "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
+      "level": "C1",
+      "coins": 2500,
+      "completedEssays": 40,
+      "streakDays": 14,
+      "rank": 1,
+      "role": "admin",
+      "joinedAt": "2026-11-09",
+      "isAuthenticated": true
+    },
+    "confirmedAt": 1794196553.9223394
+  },
+  "auth_p4jsmxzp": {
+    "code": "auth_p4jsmxzp",
+    "status": "confirmed",
+    "user": {
+      "id": "usr_tg_7034211289",
+      "telegramId": 7034211289,
+      "telegramUsername": "KhomidjonovH",
+      "name": "Hasanboy",
+      "email": "khomidjonovh@telegram.user",
+      "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
+      "level": "C1",
+      "coins": 2500,
+      "completedEssays": 40,
+      "streakDays": 14,
+      "rank": 1,
+      "role": "admin",
+      "joinedAt": "2026-11-09",
+      "isAuthenticated": true
+    },
+    "confirmedAt": 1794196679.8635166
+  },
+  "auth_aflx4m2v": {
+    "code": "auth_aflx4m2v",
+    "status": "pending",
+    "user": null,
+    "createdAt": 1794196702.4586806
   }
 }

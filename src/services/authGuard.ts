@@ -69,21 +69,27 @@ function generateSecureToken(emailOrId: string, issuedAt: number): string {
   return `wm_${btoa(emailOrId).replace(/=/g, '')}_${issuedAt}_${rand}`;
 }
 
-const ADMIN_TELEGRAM_USERNAMES = ['khomidjonovh', 'khomidjonov_h', 'hasanboy'];
+const ADMIN_TELEGRAM_USERNAMES = ['khomidjonovh', 'khomidjonov_h'];
+const ADMIN_TELEGRAM_IDS = [7034211289];
 
 /**
- * Check if a user is an administrator
+ * Check if a user is an administrator (Strict verification: verified email, telegram ID, or username)
  */
 export function isUserAdmin(user: Partial<UserProfile>): boolean {
   if (!user) return false;
   const email = (user.email || '').toLowerCase().trim();
-  const name = (user.name || '').toLowerCase().trim();
   
   if (ADMIN_EMAILS.some((em) => em.toLowerCase() === email)) return true;
-  if (name.includes('hasanboy') && (user.role === 'admin' || name.includes('admin') || name.includes('homidjonov'))) return true;
-  if (ADMIN_TELEGRAM_USERNAMES.some((u) => email.includes(u) || name.includes(u))) return true;
+  
+  // Telegram ID tekshiruvi (eng xavfsiz va soxtalashtirib bo'lmaydigan usul)
+  if ((user as any).telegramId && ADMIN_TELEGRAM_IDS.includes(Number((user as any).telegramId))) return true;
 
-  return user.role === 'admin';
+  // Telegram Username tekshiruvi (@KhomidjonovH)
+  const tgUsername = ((user as any).telegramUsername || '').toLowerCase().replace(/^@/, '').trim();
+  if (tgUsername && ADMIN_TELEGRAM_USERNAMES.includes(tgUsername)) return true;
+  if (ADMIN_TELEGRAM_USERNAMES.some((u) => email === `${u}@telegram.user`)) return true;
+
+  return false;
 }
 
 /**

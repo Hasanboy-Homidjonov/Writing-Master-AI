@@ -22,6 +22,23 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Xavfsizlik sarlavhalari (Security Headers)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
+/**
+ * Chiqish (Logout) endpoint
+ * POST /api/auth/logout
+ */
+app.all('/api/auth/logout', (req, res) => {
+  return res.status(200).json({ success: true, message: 'Muvaffaqiyatli chiqildi' });
+});
+
 /**
  * 1. Yangi Telegram login sessiyasini yaratish
  * POST /api/auth/telegram/create-session

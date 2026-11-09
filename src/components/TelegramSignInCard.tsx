@@ -41,11 +41,20 @@ export const TelegramSignInCard: React.FC<TelegramSignInCardProps> = ({
 
   // 1. Initial Session Creation & URL Hash Check
   const initSession = async (forceNew = false) => {
+    // Agar hozirgina Chiqish (Logout) qilingan bo'lsa, eski sessiyalarni bekor qilib yangi sessiya ochish
+    const justLoggedOut = sessionStorage.getItem('wm_just_logged_out');
+    if (justLoggedOut === 'true') {
+      sessionStorage.removeItem('wm_just_logged_out');
+      forceNew = true;
+    }
+
     // A) URL Hash tekshirish
-    const hashUser = await resolveTelegramHashAuth();
-    if (hashUser) {
-      handleCompleteAuth(hashUser);
-      return;
+    if (!forceNew) {
+      const hashUser = await resolveTelegramHashAuth();
+      if (hashUser) {
+        handleCompleteAuth(hashUser);
+        return;
+      }
     }
 
     // B) Mavjud sessiyani qayta ishlatish (Live Server qayta yuklanishini oldini olish)
@@ -80,6 +89,14 @@ export const TelegramSignInCard: React.FC<TelegramSignInCardProps> = ({
     }
     setConfirmedUser(user);
     setAuthStatus('confirmed');
+
+    // Muvaffaqiyatli kirilgach, vaqtinchalik kirish kodini tozalaymiz
+    // Bu 'Chiqish' qilinganda eski kod bo'yicha yana avtomatik kirib ketishni 100% to'xtatadi
+    try {
+      sessionStorage.removeItem('wm_tg_session_code');
+      sessionStorage.removeItem('wm_tg_deep_link');
+      sessionStorage.removeItem('wm_just_logged_out');
+    } catch (e) {}
 
     // Orqa fondagi sayt oynasini darhol mavzular bo'limiga kiritish
     loginWithTelegramAccount(user);

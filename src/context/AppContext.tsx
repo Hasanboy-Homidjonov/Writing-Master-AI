@@ -527,11 +527,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = () => {
     sounds.playClick();
+
+    // 1. Backend serverdagi sessiyani bekor qilish (logout)
+    try {
+      const activeCode = sessionStorage.getItem('wm_tg_session_code');
+      const apiBase = (window.location.port && window.location.port !== '5000')
+        ? `http://${window.location.hostname || '127.0.0.1'}:5000`
+        : '';
+      fetch(`${apiBase}/api/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: activeCode })
+      }).catch(() => {});
+    } catch (e) {}
+
+    // 2. Mahalliy saqlangan barcha kirish ma'lumotlarini to'liq tozalash
     clearAuthSession();
+    try {
+      sessionStorage.removeItem('wm_tg_session_code');
+      sessionStorage.removeItem('wm_tg_deep_link');
+      sessionStorage.setItem('wm_just_logged_out', 'true');
+    } catch (e) {}
+
+    // 3. URL hash'da #auth bo'lsa, tozalab faqat #login ga o'tish
+    if (window.location.hash.includes('auth=')) {
+      try {
+        window.history.replaceState(null, '', window.location.pathname + '#login');
+      } catch (e) {
+        window.location.hash = '#login';
+      }
+    } else {
+      window.location.hash = '#login';
+    }
+
+    // 4. Foydalanuvchi holatini mehmon holatiga o'tkazish
     setUser(GUEST_USER);
     setIsVerifiedSession(false);
-    setIsAuthModalOpen(true);
-    window.location.hash = '#login';
+    setIsAuthModalOpen(false);
   };
 
   const setUserLevel = (newLevel: CEFRLevel) => {

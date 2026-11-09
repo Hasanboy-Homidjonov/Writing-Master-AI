@@ -162,7 +162,11 @@ class AuthHTTPHandler(BaseHTTPRequestHandler):
     def _send_cors(self):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('X-Frame-Options', 'SAMEORIGIN')
+        self.send_header('X-XSS-Protection', '1; mode=block')
+        self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
 
     def do_OPTIONS(self):
         self.send_response(200)
@@ -199,6 +203,33 @@ class AuthHTTPHandler(BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
 
+        # Chiqish (Logout) endpoint - barcha faol avto-kirishlarni to'liq bekor qilish
+        if parsed.path in ('/api/auth/logout', '/logout'):
+            code = ''
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+                if length > 0:
+                    payload = json.loads(self.rfile.read(length).decode('utf-8'))
+                    code = payload.get('code', '')
+            except Exception:
+                pass
+
+            with sessions_lock:
+                if code and code in sessions:
+                    sessions[code]['status'] = 'logged_out'
+                # Latest tasdiqni butunlay tozalash (qaytadan avtomatik kirib ketmasligi uchun)
+                sessions['latest'] = None
+                save_sessions()
+
+            body = json.dumps({"success": True, "message": "Muvaffaqiyatli chiqildi"}).encode('utf-8')
+            self.send_response(200)
+            self._send_cors()
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
         self.send_response(404)
         self._send_cors()
         self.end_headers()
@@ -207,28 +238,54 @@ class AuthHTTPHandler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         qs = urllib.parse.parse_qs(parsed.query)
 
+        # Chiqish (GET orqali ham ishlashi uchun)
+        if parsed.path in ('/api/auth/logout', '/logout'):
+            code = (qs.get('code') or [''])[0]
+            with sessions_lock:
+                if code and code in sessions:
+                    sessions[code]['status'] = 'logged_out'
+                sessions['latest'] = None
+                save_sessions()
+
+            body = json.dumps({"success": True, "message": "Muvaffaqiyatli chiqildi"}).encode('utf-8')
+            self.send_response(200)
+            self._send_cors()
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
         if parsed.path in ('/api/auth/telegram/status', '/status'):
             code = (qs.get('code') or [''])[0]
             with sessions_lock:
                 session = sessions.get(code)
-                # Agar ushbu kod pending bo'lsa yoki topilmasa, lekin oxirgi 90 soniyada Telegramda 'Ha' bosilgan bo'lsa:
+                # Agar ushbu sessiya hali tasdiqlanmagan bo'lsa, eng so'nggi tasdiqlangan sessiyani tekshirish
                 latest = sessions.get('latest')
-                if latest and latest.get('status') == 'confirmed':
-                    confirmed_at = latest.get('confirmedAt', 0)
-                    if time.time() - confirmed_at < 90:
-                        session = latest
+                if (not session or session.get('status') == 'pending') and latest:
+                    if latest.get('status') == 'confirmed':
+                        confirmed_at = latest.get('confirmedAt', 0)
+                        if time.time() - confirmed_at < 45:
+                            session = latest
 
-            if session:
-                response = {
-                    "success": True,
-                    "status": session.get("status", "pending"),
-                    "user": session.get("user")
-                }
-            else:
-                response = {
-                    "success": True,
-                    "status": "pending"
-                }
+                # XAVFSIZLIK: Bir martalik foydalanish (One-time Use)
+                # Foydalanuvchi bir marta tizimga kirganidan so'ng sessiya 'consumed' qilinadi.
+                # Shu tariqa 'Chiqish' qilingandan so'ng qayta avto-kirish butunlay imkonsiz bo'ladi!
+                if session and session.get('status') == 'confirmed':
+                    session_user = session.get("user")
+                    session['status'] = 'consumed'
+                    sessions['latest'] = None
+                    save_sessions()
+                    response = {
+                        "success": True,
+                        "status": "confirmed",
+                        "user": session_user
+                    }
+                else:
+                    response = {
+                        "success": True,
+                        "status": session.get("status", "pending") if session else "pending"
+                    }
 
             body = json.dumps(response).encode('utf-8')
             self.send_response(200)
@@ -275,10 +332,37 @@ class AuthHTTPHandler(BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
 
-        # Static Frontend File Serving (dist / index.html / assets)
-        # Allows phones, tablets, and computers to load the full application from port 5000
-        req_path = parsed.path.lstrip('/')
-        if not req_path:
+        # =====================================================================
+        # STATIC FRONTEND FILE SERVING (Xavfsiz va Path-Traversal'dan himoyalangan)
+        # =====================================================================
+        clean_path = os.path.normpath(parsed.path.lstrip('/'))
+
+        # XAVFSIZLIK: Directory Traversal (../..) hujumlarini to'xtatish
+        if clean_path.startswith('..') or '..' in clean_path.split(os.sep):
+            self.send_response(403)
+            self._send_cors()
+            self.end_headers()
+            self.wfile.write(b"403 Forbidden")
+            return
+
+        # XAVFSIZLIK: Yashirin va server fayllarini (.env, .git, *.py, server/*.json) himoya qilish
+        base_name = os.path.basename(clean_path).lower()
+        if (
+            clean_path.startswith('.env')
+            or clean_path.startswith('.git')
+            or clean_path.endswith('.py')
+            or clean_path.endswith('.json')
+            or clean_path.startswith('server')
+            or base_name.startswith('.')
+        ):
+            self.send_response(403)
+            self._send_cors()
+            self.end_headers()
+            self.wfile.write(b"403 Forbidden")
+            return
+
+        req_path = clean_path
+        if not req_path or req_path == '.':
             req_path = 'index.html'
 
         dist_dir = os.path.join(SCRIPT_DIR, 'dist')
@@ -286,7 +370,7 @@ class AuthHTTPHandler(BaseHTTPRequestHandler):
         if not os.path.exists(file_path):
             file_path = os.path.join(SCRIPT_DIR, req_path)
 
-        # SPA fallback: if requested path is a route like /#login or not found, serve index.html
+        # SPA fallback: agar mavjud bo'lmagan marshrut bo'lsa (#login, #topics), index.html berish
         if not os.path.exists(file_path) or os.path.isdir(file_path):
             file_path = os.path.join(dist_dir, 'index.html')
             if not os.path.exists(file_path):
@@ -328,6 +412,7 @@ class AuthHTTPHandler(BaseHTTPRequestHandler):
 
         self.send_response(404)
         self._send_cors()
+        self.end_headers()
         self.end_headers()
 
     def log_message(self, format, *args):
@@ -497,8 +582,7 @@ def handle_callback(cb):
 
     is_admin = (
         username.lower() in ["khomidjonovh", "khomidjonov_h"]
-        or "hasanboy" in name.lower()
-        or from_user.get("id") == 8676643528
+        or from_user.get("id") == 7034211289
     )
 
     print(f"🔘 [{time.strftime('%H:%M:%S')}] Tugma bosildi: {name}: {data}")
