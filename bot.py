@@ -340,6 +340,30 @@ def run_http_server(port=5000):
         print(f"[HTTP Server Warning] Port {port} band bo'lishi mumkin: {e}", file=sys.stderr)
 
 # Telegram Bot Xabarlari va Tugmalari
+def get_main_menu_message(name):
+    site_url = get_site_url()
+    text = (
+        f"Assalomu alaykum, <b>{name}</b>! 👋\n\n"
+        f"🤖 <b>WriteMaster AI botiga xush kelibsiz!</b>\n"
+        f"Sizga qanday yordam bera olaman?\n\n"
+        f"🎯 <b>Quyidagi imkoniyatlardan foydalanishingiz mumkin:</b>\n"
+        f"• ✍️ <b>Inglizcha insho yozish:</b> Mavzular bo'yicha mustaqil insho yozish\n"
+        f"• 🧠 <b>5D Sun'iy Intellekt tahlili:</b> Xatolarni aniqlash va ball olish\n"
+        f"• 📊 <b>CEFR Darajasini oshirish:</b> A1 dan C1 gacha ko'tarilish\n"
+        f"• 🏆 <b>WriteCoin va Reyting:</b> Ballar yig'ib peshqadamlar safiga kirish\n\n"
+        f"🌐 <b>Saytga kirish uchun</b> quyidagi tugmani bosing yoki yordam bo'limini tanlang 👇"
+    )
+    markup = {
+        "inline_keyboard": [
+            [{"text": "🚀 Saytga kirish", "url": site_url}],
+            [
+                {"text": "📚 Qoidalar va Yordam (/help)", "callback_data": "help_info"},
+                {"text": "👨‍💻 Admin bilan bog'lanish (/admin)", "callback_data": "admin_info"}
+            ]
+        ]
+    }
+    return text, markup
+
 def get_help_message():
     site_url = get_site_url()
     text = (
@@ -362,7 +386,10 @@ def get_help_message():
     markup = {
         "inline_keyboard": [
             [{"text": "🚀 Saytga kirish", "url": site_url}],
-            [{"text": "👨‍💻 Admin bilan bog'lanish", "callback_data": "admin_info"}]
+            [
+                {"text": "👨‍💻 Admin (/admin)", "callback_data": "admin_info"},
+                {"text": "🏠 Bosh menyu", "callback_data": "main_menu"}
+            ]
         ]
     }
     return text, markup
@@ -381,7 +408,10 @@ def get_admin_message():
         "inline_keyboard": [
             [{"text": "💬 Telegram: @KhomidjonovH", "url": "https://t.me/KhomidjonovH"}],
             [{"text": "🤖 Aloqa Boti: @Khomidjonov_H", "url": "https://t.me/Khomidjonov_H"}],
-            [{"text": "🚀 Saytga kirish", "url": site_url}]
+            [
+                {"text": "🚀 Saytga kirish", "url": site_url},
+                {"text": "🏠 Bosh menyu", "callback_data": "main_menu"}
+            ]
         ]
     }
     return text, markup
@@ -390,46 +420,64 @@ def handle_message(msg):
     chat_id = msg.get("chat", {}).get("id")
     text = (msg.get("text") or "").strip()
     from_user = msg.get("from", {})
-    name = " ".join(filter(None, [from_user.get("first_name"), from_user.get("last_name")])) or from_user.get("username") or "Hasanboy"
+    first_name = from_user.get("first_name") or ""
+    last_name = from_user.get("last_name") or ""
+    name = " ".join(filter(None, [first_name, last_name])) or from_user.get("username") or "Foydalanuvchi"
 
     print(f"📩 [{time.strftime('%H:%M:%S')}] Xabar keldi: {name}: {text}")
 
-    # /help
+    # 1. /help
     if text.startswith("/help") or "yordam" in text.lower():
         msg_text, markup = get_help_message()
         tg_api("sendMessage", {"chat_id": chat_id, "text": msg_text, "parse_mode": "HTML", "reply_markup": markup})
         return
 
-    # /admin
+    # 2. /admin
     if text.startswith("/admin") or "admin" in text.lower():
         msg_text, markup = get_admin_message()
         tg_api("sendMessage", {"chat_id": chat_id, "text": msg_text, "parse_mode": "HTML", "reply_markup": markup})
         return
 
-    # /start auth_xxxx
-    session_code = "auth_latest"
+    # 3. Saytdan dostup olib kirgan holat: /start auth_xxxx
     parts = text.split()
-    if len(parts) > 1 and parts[1].strip():
-        session_code = parts[1].strip()
+    auth_param = parts[1].strip() if len(parts) > 1 else ""
 
-    prompt_text = (
-        f"🔐 <b>Writing Master platformasiga kirish so'rovi!</b>\n\n"
-        f"Assalomu alaykum, <b>{name}</b>!\n"
-        f"Saytga ushbu Telegram hisobingiz orqali kirishni tasdiqlaysizmi?"
-    )
-    markup = {
-        "inline_keyboard": [
-            [
-                {"text": "✅ Ha, kiraman", "callback_data": f"confirm_{session_code}"},
-                {"text": "❌ Yo'q, bekor qilish", "callback_data": f"reject_{session_code}"}
-            ],
-            [
-                {"text": "📚 Yordam (/help)", "callback_data": "help_info"},
-                {"text": "👨‍💻 Admin (/admin)", "callback_data": "admin_info"}
+    if auth_param.startswith("auth_"):
+        session_code = auth_param
+        with sessions_lock:
+            if session_code not in sessions:
+                sessions[session_code] = {
+                    "code": session_code,
+                    "status": "pending",
+                    "user": None,
+                    "createdAt": time.time()
+                }
+                save_sessions()
+
+        prompt_text = (
+            f"🔐 <b>Writing Master platformasiga kirish so'rovi!</b>\n\n"
+            f"Assalomu alaykum, <b>{name}</b>!\n"
+            f"Saytga ushbu Telegram hisobingiz orqali kirishni tasdiqlaysizmi?"
+        )
+        markup = {
+            "inline_keyboard": [
+                [
+                    {"text": "✅ Ha, kiraman", "callback_data": f"confirm_{session_code}"},
+                    {"text": "❌ Yo'q, bekor qilish", "callback_data": f"reject_{session_code}"}
+                ],
+                [
+                    {"text": "📚 Yordam (/help)", "callback_data": "help_info"},
+                    {"text": "👨‍💻 Admin (/admin)", "callback_data": "admin_info"}
+                ]
             ]
-        ]
-    }
-    tg_api("sendMessage", {"chat_id": chat_id, "text": prompt_text, "parse_mode": "HTML", "reply_markup": markup})
+        }
+        tg_api("sendMessage", {"chat_id": chat_id, "text": prompt_text, "parse_mode": "HTML", "reply_markup": markup})
+        return
+
+    # 4. Botning o'zida turib /start bossa yoki boshqa xabar yozsa:
+    # "Assalomu alaykum, {name}! Sizga qanday yordam bera olaman?" deb chiqadi:
+    msg_text, markup = get_main_menu_message(name)
+    tg_api("sendMessage", {"chat_id": chat_id, "text": msg_text, "parse_mode": "HTML", "reply_markup": markup})
 
 def handle_callback(cb):
     cb_id = cb.get("id")
@@ -534,12 +582,18 @@ def handle_callback(cb):
         tg_api("sendMessage", {"chat_id": chat_id, "text": msg_text, "parse_mode": "HTML", "reply_markup": markup})
         return
 
+    if data == "main_menu":
+        tg_api("answerCallbackQuery", {"callback_query_id": cb_id})
+        msg_text, markup = get_main_menu_message(name)
+        tg_api("sendMessage", {"chat_id": chat_id, "text": msg_text, "parse_mode": "HTML", "reply_markup": markup})
+        return
+
 def setup_bot():
     print(f"🤖 Telegram Bot sozlanmoqda: @{BOT_USERNAME}...")
     tg_api("deleteWebhook")
     commands = {
         "commands": [
-            {"command": "start", "description": "🚀 Platformani boshlash va saytga kirish"},
+            {"command": "start", "description": "🏠 Asosiy menyu va yordam"},
             {"command": "help", "description": "📚 Qoidalar va to'liq yordam"},
             {"command": "admin", "description": "👨‍💻 Admin va dasturchi bilan bog'lanish"}
         ]
