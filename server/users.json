@@ -46,5 +46,21 @@
     "role": "admin",
     "joinedAt": "2026-11-09",
     "isAuthenticated": true
+  },
+  {
+    "id": "usr_tg_1180208103",
+    "telegramId": 1180208103,
+    "telegramUsername": "jasurbek_yusufjonov1",
+    "name": "Jasurbek Yusufjonov",
+    "email": "jasurbek_yusufjonov1@telegram.user",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Jasurbek%20Yusufjonov",
+    "level": "B1",
+    "coins": 150,
+    "completedEssays": 0,
+    "streakDays": 1,
+    "rank": 12,
+    "role": "user",
+    "joinedAt": "2026-11-09",
+    "isAuthenticated": true
   }
 ]

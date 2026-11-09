@@ -38,12 +38,48 @@ if hasattr(sys.stderr, 'reconfigure'):
 
 BOT_TOKEN = "8676643528:AAEsgk_CWjGEp3JNjMABakJbvZnVta_wPrs"
 BOT_USERNAME = "Write_English_bot"
-SITE_BASE_URL = "http://127.0.0.1:5500/index.html"
-
 API_BASE = f"https://api.telegram.org/bot{BOT_TOKEN}"
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 USERS_FILE = os.path.join(SCRIPT_DIR, "server", "users.json")
 SESSIONS_FILE = os.path.join(SCRIPT_DIR, "server", "telegram_sessions.json")
+
+def get_site_url():
+    # 1. Cloud environment variables (Render, Railway, Heroku, etc.)
+    for env_key in ("SITE_URL", "RENDER_EXTERNAL_URL", "RAILWAY_PUBLIC_DOMAIN", "PUBLIC_URL"):
+        val = (os.environ.get(env_key) or "").strip()
+        if val and "localhost" not in val and "127.0.0.1" not in val:
+            if not val.startswith("http://") and not val.startswith("https://"):
+                val = f"https://{val}"
+            return val
+
+    # 2. .env faylidan o'qish (faqat haqiqiy production domen bo'lsa)
+    env_file = os.path.join(SCRIPT_DIR, ".env")
+    if os.path.exists(env_file):
+        try:
+            with open(env_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    stripped = line.strip()
+                    if stripped.startswith("SITE_URL="):
+                        val = stripped.split("=", 1)[1].strip().strip('"').strip("'")
+                        if val and not val.startswith("#") and "localhost" not in val and "127.0.0.1" not in val:
+                            return val
+        except Exception:
+            pass
+
+    # 3. Wi-Fi / Lokal tarmoq IP manzilini aniqlash (telefonda ochilganda ishlashi uchun)
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        if local_ip and not local_ip.startswith("127."):
+            return f"http://{local_ip}:5000"
+    except Exception:
+        pass
+
+    return "http://localhost:5000"
 
 # In-memory session store
 sessions_lock = threading.Lock()
@@ -200,6 +236,32 @@ class AuthHTTPHandler(BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
 
+        if parsed.path in ('/api/auth/telegram/create-session', '/create-session'):
+            code = 'auth_' + base64.b32encode(os.urandom(5)).decode('ascii').lower()[:8]
+            deep_link = f"https://t.me/{BOT_USERNAME}?start={code}"
+            with sessions_lock:
+                sessions[code] = {
+                    "code": code,
+                    "status": "pending",
+                    "user": None,
+                    "createdAt": time.time()
+                }
+                save_sessions()
+            response = {
+                "success": True,
+                "code": code,
+                "botUsername": BOT_USERNAME,
+                "deepLink": deep_link
+            }
+            body = json.dumps(response).encode('utf-8')
+            self.send_response(200)
+            self._send_cors()
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
         if parsed.path in ('/api/health', '/health'):
             body = json.dumps({"status": "ok", "service": "Writing Master Bot Auth Server"}).encode('utf-8')
             self.send_response(200)
@@ -209,6 +271,57 @@ class AuthHTTPHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+
+        # Static Frontend File Serving (dist / index.html / assets)
+        # Allows phones, tablets, and computers to load the full application from port 5000
+        req_path = parsed.path.lstrip('/')
+        if not req_path:
+            req_path = 'index.html'
+
+        dist_dir = os.path.join(SCRIPT_DIR, 'dist')
+        file_path = os.path.join(dist_dir, req_path)
+        if not os.path.exists(file_path):
+            file_path = os.path.join(SCRIPT_DIR, req_path)
+
+        # SPA fallback: if requested path is a route like /#login or not found, serve index.html
+        if not os.path.exists(file_path) or os.path.isdir(file_path):
+            file_path = os.path.join(dist_dir, 'index.html')
+            if not os.path.exists(file_path):
+                file_path = os.path.join(SCRIPT_DIR, 'index.html')
+
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            import mimetypes
+            content_type, _ = mimetypes.guess_type(file_path)
+            if not content_type:
+                if file_path.endswith('.js') or file_path.endswith('.ts'):
+                    content_type = 'application/javascript; charset=utf-8'
+                elif file_path.endswith('.css'):
+                    content_type = 'text/css; charset=utf-8'
+                elif file_path.endswith('.html'):
+                    content_type = 'text/html; charset=utf-8'
+                elif file_path.endswith('.svg'):
+                    content_type = 'image/svg+xml'
+                elif file_path.endswith('.json'):
+                    content_type = 'application/json; charset=utf-8'
+                else:
+                    content_type = 'application/octet-stream'
+
+            try:
+                with open(file_path, 'rb') as f:
+                    content = f.read()
+                self.send_response(200)
+                self._send_cors()
+                self.send_header('Content-Type', content_type)
+                self.send_header('Content-Length', str(len(content)))
+                if file_path.endswith('.html'):
+                    self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                else:
+                    self.send_header('Cache-Control', 'public, max-age=31536000')
+                self.end_headers()
+                self.wfile.write(content)
+                return
+            except Exception:
+                pass
 
         self.send_response(404)
         self._send_cors()
@@ -220,14 +333,15 @@ class AuthHTTPHandler(BaseHTTPRequestHandler):
 
 def run_http_server(port=5000):
     try:
-        server = HTTPServer(('127.0.0.1', port), AuthHTTPHandler)
-        print(f"🌐 Mahalliy autentifikatsiya serveri ishga tushdi: http://127.0.0.1:{port}")
+        server = HTTPServer(('0.0.0.0', port), AuthHTTPHandler)
+        print(f"🌐 Autentifikatsiya serveri faol: port {port} (0.0.0.0)")
         server.serve_forever()
     except Exception as e:
         print(f"[HTTP Server Warning] Port {port} band bo'lishi mumkin: {e}", file=sys.stderr)
 
 # Telegram Bot Xabarlari va Tugmalari
 def get_help_message():
+    site_url = get_site_url()
     text = (
         "📚 <b>WriteMaster AI — To'liq Qoidalar va Yordam</b>\n\n"
         "🟣 <b>1. 90% Qoidasi</b>\n"
@@ -247,13 +361,14 @@ def get_help_message():
     )
     markup = {
         "inline_keyboard": [
-            [{"text": "🚀 Saytga kirish", "url": SITE_BASE_URL}],
+            [{"text": "🚀 Saytga kirish", "url": site_url}],
             [{"text": "👨‍💻 Admin bilan bog'lanish", "callback_data": "admin_info"}]
         ]
     }
     return text, markup
 
 def get_admin_message():
+    site_url = get_site_url()
     text = (
         "👨‍💻 <b>Admin va Dasturchi bilan bog'lanish</b>\n\n"
         "• <b>Dasturchi:</b> Hasanboy Homidjonov\n"
@@ -266,7 +381,7 @@ def get_admin_message():
         "inline_keyboard": [
             [{"text": "💬 Telegram: @KhomidjonovH", "url": "https://t.me/KhomidjonovH"}],
             [{"text": "🤖 Aloqa Boti: @Khomidjonov_H", "url": "https://t.me/Khomidjonov_H"}],
-            [{"text": "🚀 Saytga kirish", "url": SITE_BASE_URL}]
+            [{"text": "🚀 Saytga kirish", "url": site_url}]
         ]
     }
     return text, markup
@@ -369,8 +484,9 @@ def handle_callback(cb):
             sessions["latest"] = sessions[session_code]
             save_sessions()
 
-        # Qisqa, toza va chiroyli havola (hech qanday uzun xunuk kodlarsiz)
-        direct_auth_url = f"{SITE_BASE_URL}#auth={session_code}"
+        # Qisqa, toza va chiroyli havola (telefon va server uchun dinamik)
+        site_url = get_site_url()
+        direct_auth_url = f"{site_url}#auth={session_code}" if "#" not in site_url else site_url
 
         tg_api("answerCallbackQuery", {"callback_query_id": cb_id, "text": "✅ Kirish muvaffaqiyatli tasdiqlandi!"})
         success_text = (
@@ -381,7 +497,7 @@ def handle_callback(cb):
         )
         markup = {
             "inline_keyboard": [
-                [{"text": "🚀 Saytga kirish (Go Live)", "url": direct_auth_url}]
+                [{"text": "🚀 Saytga kirish", "url": direct_auth_url}]
             ]
         }
         tg_api("editMessageText", {

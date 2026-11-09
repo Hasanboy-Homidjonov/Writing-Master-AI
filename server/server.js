@@ -107,7 +107,10 @@ function launchTelegramBot() {
   }
 
   const isWindows = process.platform === 'win32';
-  const pyCmd = isWindows ? 'python' : 'python3';
+  let pyCmd = isWindows ? 'python' : 'python3';
+  if (isWindows && fs.existsSync('C:\\msys64\\ucrt64\\bin\\python.exe')) {
+    pyCmd = 'C:\\msys64\\ucrt64\\bin\\python.exe';
+  }
   const botPath = path.resolve(__dirname, '..', 'bot.py');
 
   try {
@@ -142,8 +145,8 @@ process.on('SIGTERM', () => {
   process.exit();
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Writing Master Server running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Writing Master Server running on http://0.0.0.0:${PORT}`);
   // Faqat server ishga tushgandan so'ng botni orqa fonda birga qo'shib yuborish
   launchTelegramBot();
 });

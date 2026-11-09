@@ -99,6 +99,23 @@ export async function resolveTelegramHashAuth(): Promise<TelegramAuthUser | null
 }
 
 /**
+ * Smart API Base URL:
+ * - Serverda yoki telefonda ishlatilganda avtomatik moslashadi (relative URL)
+ * - VS Code Live Serverda (5500) ishlatilganda o'sha qurilma IP'siga (port 5000) ulanadi
+ */
+function getApiBaseUrl(): string {
+  if (typeof window === 'undefined') return '';
+  const { protocol, hostname, port } = window.location;
+  // Agar backend serverning o'zi (port 5000) yoki cloud server (Render, Railway, VPS - port bo'sh) bo'lsa
+  if (!port || port === '5000') {
+    return '';
+  }
+  // Har qanday frontend dev server (Vite 3000-3003, Live Server 5500, va b.)
+  const host = hostname || '127.0.0.1';
+  return `http://${host}:5000`;
+}
+
+/**
  * 1. Yangi Telegram login sessiyasini yaratish (bot.py ga murojaat)
  */
 export async function createTelegramLoginSession(): Promise<TelegramSessionResponse> {
@@ -106,7 +123,7 @@ export async function createTelegramLoginSession(): Promise<TelegramSessionRespo
   const fallbackLink = `https://t.me/${BOT_USERNAME}?start=${fallbackCode}`;
 
   try {
-    const res = await fetch('http://127.0.0.1:5000/api/auth/telegram/create-session', {
+    const res = await fetch(`${getApiBaseUrl()}/api/auth/telegram/create-session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -133,7 +150,7 @@ export async function createTelegramLoginSession(): Promise<TelegramSessionRespo
  */
 export async function checkTelegramLoginStatus(code: string): Promise<TelegramStatusResponse> {
   try {
-    const res = await fetch(`http://127.0.0.1:5000/api/auth/telegram/status?code=${encodeURIComponent(code)}`);
+    const res = await fetch(`${getApiBaseUrl()}/api/auth/telegram/status?code=${encodeURIComponent(code)}`);
     if (res.ok) {
       const data = await res.json();
       return data;
