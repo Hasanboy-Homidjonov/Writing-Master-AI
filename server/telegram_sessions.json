@@ -5224,5 +5224,200 @@
     "status": "pending",
     "user": null,
     "createdAt": 1794196702.4586806
+  },
+  "auth_hhqyfi5y": {
+    "code": "auth_hhqyfi5y",
+    "status": "consumed",
+    "user": {
+      "id": "usr_tg_7034211289",
+      "telegramId": 7034211289,
+      "telegramUsername": "KhomidjonovH",
+      "name": "Hasanboy",
+      "email": "khomidjonovh@telegram.user",
+      "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
+      "level": "C1",
+      "coins": 2500,
+      "completedEssays": 40,
+      "streakDays": 14,
+      "rank": 1,
+      "role": "admin",
+      "joinedAt": "2026-11-09",
+      "isAuthenticated": true
+    },
+    "confirmedAt": 1794197409.8063657
+  },
+  "auth_ndhbuo6v": {
+    "code": "auth_ndhbuo6v",
+    "status": "consumed",
+    "user": {
+      "id": "usr_tg_8229555632",
+      "telegramId": 8229555632,
+      "telegramUsername": "Khomidjonov_H",
+      "name": "Hasanboy",
+      "email": "khomidjonov_h@telegram.user",
+      "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
+      "level": "C1",
+      "coins": 2500,
+      "completedEssays": 40,
+      "streakDays": 14,
+      "rank": 1,
+      "role": "admin",
+      "joinedAt": "2026-11-09",
+      "isAuthenticated": true
+    },
+    "confirmedAt": 1794197479.1257153
+  },
+  "auth_xx5xld7y": {
+    "code": "auth_xx5xld7y",
+    "status": "consumed",
+    "user": {
+      "id": "usr_tg_7744395518",
+      "telegramId": 7744395518,
+      "telegramUsername": "",
+      "name": "Hasanboy",
+      "email": "tg_7744395518@writingmaster.app",
+      "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
+      "level": "B1",
+      "coins": 150,
+      "completedEssays": 0,
+      "streakDays": 1,
+      "rank": 12,
+      "role": "user",
+      "joinedAt": "2026-11-09",
+      "isAuthenticated": true
+    },
+    "confirmedAt": 1794197507.4311311
+  },
+  "auth_vn3pt4ti": {
+    "code": "auth_vn3pt4ti",
+    "status": "consumed",
+    "user": {
+      "id": "usr_tg_7744395518",
+      "telegramId": 7744395518,
+      "telegramUsername": "",
+      "name": "Hasanboy",
+      "email": "tg_7744395518@writingmaster.app",
+      "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
+      "level": "B1",
+      "coins": 150,
+      "completedEssays": 0,
+      "streakDays": 1,
+      "rank": 12,
+      "role": "user",
+      "joinedAt": "2026-11-09",
+      "isAuthenticated": true
+    },
+    "confirmedAt": 1794197721.3004048
+  },
+  "auth_yng3k0x": {
+    "code": "auth_yng3k0x",
+    "status": "confirmed",
+    "user": {
+      "id": "usr_tg_1180208103",
+      "telegramId": 1180208103,
+      "telegramUsername": "jasurbek_yusufjonov1",
+      "name": "Jasurbek Yusufjonov",
+      "email": "jasurbek_yusufjonov1@telegram.user",
+      "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Jasurbek%20Yusufjonov",
+      "level": "B1",
+      "coins": 150,
+      "completedEssays": 0,
+      "streakDays": 1,
+      "rank": 12,
+      "role": "user",
+      "joinedAt": "2026-11-09",
+      "isAuthenticated": true
+    },
+    "confirmedAt": 1794198358.8752792
+  },
+  "auth_cfk3kdp": {
+    "code": "auth_cfk3kdp",
+    "status": "consumed",
+    "user": {
+      "id": "usr_tg_1180208103",
+      "telegramId": 1180208103,
+      "telegramUsername": "jasurbek_yusufjonov1",
+      "name": "Jasurbek Yusufjonov",
+      "email": "jasurbek_yusufjonov1@telegram.user",
+      "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Jasurbek%20Yusufjonov",
+      "level": "B1",
+      "coins": 150,
+      "completedEssays": 0,
+      "streakDays": 1,
+      "rank": 12,
+      "role": "user",
+      "joinedAt": "2026-11-09",
+      "isAuthenticated": true
+    },
+    "confirmedAt": 1794198379.7648215
+  },
+  "auth_8p0qoi9": {
+    "code": "auth_8p0qoi9",
+    "status": "consumed",
+    "user": {
+      "id": "usr_tg_7034211289",
+      "telegramId": 7034211289,
+      "telegramUsername": "KhomidjonovH",
+      "name": "Hasanboy",
+      "email": "khomidjonovh@telegram.user",
+      "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
+      "level": "C1",
+      "coins": 2500,
+      "completedEssays": 40,
+      "streakDays": 14,
+      "rank": 1,
+      "role": "admin",
+      "joinedAt": "2026-11-09",
+      "isAuthenticated": true
+    },
+    "confirmedAt": 1794198490.9628882
+  },
+  "auth_1b0pr00": {
+    "code": "auth_1b0pr00",
+    "status": "confirmed",
+    "user": {
+      "id": "usr_tg_7034211289",
+      "telegramId": 7034211289,
+      "telegramUsername": "KhomidjonovH",
+      "name": "Hasanboy",
+      "email": "khomidjonovh@telegram.user",
+      "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
+      "level": "C1",
+      "coins": 2500,
+      "completedEssays": 40,
+      "streakDays": 14,
+      "rank": 1,
+      "role": "admin",
+      "joinedAt": "2026-11-09",
+      "isAuthenticated": true
+    },
+    "confirmedAt": 1794201970.8472462
+  },
+  "auth_3h234wd7": {
+    "code": "auth_3h234wd7",
+    "status": "pending",
+    "user": null,
+    "createdAt": 1794202035.646149
+  },
+  "auth_nzzsyvju": {
+    "code": "auth_nzzsyvju",
+    "status": "consumed",
+    "user": {
+      "id": "usr_tg_7034211289",
+      "telegramId": 7034211289,
+      "telegramUsername": "KhomidjonovH",
+      "name": "Hasanboy",
+      "email": "khomidjonovh@telegram.user",
+      "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
+      "level": "C1",
+      "coins": 2500,
+      "completedEssays": 40,
+      "streakDays": 14,
+      "rank": 1,
+      "role": "admin",
+      "joinedAt": "2026-11-09",
+      "isAuthenticated": true
+    },
+    "confirmedAt": 1794202051.4483213
   }
 }

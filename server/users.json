@@ -62,5 +62,37 @@
     "role": "user",
     "joinedAt": "2026-11-09",
     "isAuthenticated": true
+  },
+  {
+    "id": "usr_tg_8229555632",
+    "telegramId": 8229555632,
+    "telegramUsername": "Khomidjonov_H",
+    "name": "Hasanboy",
+    "email": "khomidjonov_h@telegram.user",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
+    "level": "C1",
+    "coins": 2500,
+    "completedEssays": 40,
+    "streakDays": 14,
+    "rank": 1,
+    "role": "admin",
+    "joinedAt": "2026-11-09",
+    "isAuthenticated": true
+  },
+  {
+    "id": "usr_tg_7744395518",
+    "telegramId": 7744395518,
+    "telegramUsername": "",
+    "name": "Hasanboy",
+    "email": "tg_7744395518@writingmaster.app",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
+    "level": "B1",
+    "coins": 150,
+    "completedEssays": 0,
+    "streakDays": 1,
+    "rank": 12,
+    "role": "user",
+    "joinedAt": "2026-11-09",
+    "isAuthenticated": true
   }
 ]
