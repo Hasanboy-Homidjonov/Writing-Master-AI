@@ -277,6 +277,8 @@ def handle_message(msg):
     from_user = msg.get("from", {})
     name = " ".join(filter(None, [from_user.get("first_name"), from_user.get("last_name")])) or from_user.get("username") or "Hasanboy"
 
+    print(f"📩 [{time.strftime('%H:%M:%S')}] Xabar keldi: {name}: {text}")
+
     # /help
     if text.startswith("/help") or "yordam" in text.lower():
         msg_text, markup = get_help_message()
@@ -332,6 +334,8 @@ def handle_callback(cb):
         or "hasanboy" in name.lower()
         or from_user.get("id") == 8676643528
     )
+
+    print(f"🔘 [{time.strftime('%H:%M:%S')}] Tugma bosildi: {name}: {data}")
 
     if data.startswith("confirm_"):
         session_code = data.replace("confirm_", "")
@@ -416,7 +420,7 @@ def handle_callback(cb):
 
 def setup_bot():
     print(f"🤖 Telegram Bot sozlanmoqda: @{BOT_USERNAME}...")
-    tg_api("deleteWebhook", {"drop_pending_updates": True})
+    tg_api("deleteWebhook")
     commands = {
         "commands": [
             {"command": "start", "description": "🚀 Platformani boshlash va saytga kirish"},
@@ -449,6 +453,8 @@ def main():
                         handle_message(u["message"])
                     elif "callback_query" in u:
                         handle_callback(u["callback_query"])
+            else:
+                time.sleep(1)
         except KeyboardInterrupt:
             print("\nBot to'xtatildi.")
             break
