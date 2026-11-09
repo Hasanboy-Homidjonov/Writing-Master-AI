@@ -211,9 +211,12 @@ class AuthHTTPHandler(BaseHTTPRequestHandler):
             code = (qs.get('code') or [''])[0]
             with sessions_lock:
                 session = sessions.get(code)
-                if not session:
-                    # check latest confirmed session if fallback
-                    session = sessions.get('latest')
+                # Agar ushbu kod pending bo'lsa yoki topilmasa, lekin oxirgi 90 soniyada Telegramda 'Ha' bosilgan bo'lsa:
+                latest = sessions.get('latest')
+                if latest and latest.get('status') == 'confirmed':
+                    confirmed_at = latest.get('confirmedAt', 0)
+                    if time.time() - confirmed_at < 90:
+                        session = latest
 
             if session:
                 response = {
@@ -536,16 +539,15 @@ def handle_callback(cb):
         site_url = get_site_url()
         direct_auth_url = f"{site_url}#auth={session_code}" if "#" not in site_url else site_url
 
-        tg_api("answerCallbackQuery", {"callback_query_id": cb_id, "text": "✅ Kirish muvaffaqiyatli tasdiqlandi!"})
+        tg_api("answerCallbackQuery", {"callback_query_id": cb_id, "text": "✅ Kirish tasdiqlandi!"})
         success_text = (
             f"✅ <b>Kirish muvaffaqiyatli tasdiqlandi!</b>\n\n"
-            f"🎉 Xush kelibsiz, <b>{name}</b> ({'Admin Hasanboy' if is_admin else 'Talaba'})!\n\n"
-            f"Profilingiz yaratildi va saytga ulandi.\n"
-            f"Brauzeringiz avtomatik ochilishi kerak. Agar ochilmasa, quyidagi tugmani bosing:"
+            f"🎉 Xush kelibsiz, <b>{name}</b>!\n"
+            f"Profilingiz faollashtirildi va saytga ulandi. Brauzeringizdagi sahifadan foydalanishni davom ettirishingiz mumkin."
         )
         markup = {
             "inline_keyboard": [
-                [{"text": "🚀 Saytga kirish", "url": direct_auth_url}]
+                [{"text": "🚀 Saytga o'tish", "url": direct_auth_url}]
             ]
         }
         tg_api("editMessageText", {

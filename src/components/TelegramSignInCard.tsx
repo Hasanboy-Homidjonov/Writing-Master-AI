@@ -76,16 +76,16 @@ export const TelegramSignInCard: React.FC<TelegramSignInCardProps> = ({
   const handleCompleteAuth = (user: TelegramAuthUser) => {
     if (pollTimerRef.current) {
       clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
     }
     setConfirmedUser(user);
     setAuthStatus('confirmed');
 
-    setTimeout(() => {
-      loginWithTelegramAccount(user);
-      if (onSuccess) {
-        onSuccess();
-      }
-    }, 900);
+    // Orqa fondagi sayt oynasini darhol mavzular bo'limiga kiritish
+    loginWithTelegramAccount(user);
+    if (onSuccess) {
+      onSuccess();
+    }
   };
 
   useEffect(() => {
@@ -104,34 +104,61 @@ export const TelegramSignInCard: React.FC<TelegramSignInCardProps> = ({
       window.removeEventListener('hashchange', handleHashChange);
       if (pollTimerRef.current) {
         clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
       }
     };
   }, []);
 
-  // 2. Telegram Botdan tasdiq kutilishi (Real-time polling)
+  // 2. Telegram Botdan tasdiq kutilishi (Real-time polling va Tabga qaytish hodisalari)
   useEffect(() => {
     if (!sessionCode || authStatus !== 'waiting') return;
 
     if (pollTimerRef.current) {
       clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
     }
 
-    pollTimerRef.current = setInterval(async () => {
+    const checkNow = async () => {
       const res = await checkTelegramLoginStatus(sessionCode);
 
       if (res.status === 'confirmed' && res.user) {
-        clearInterval(pollTimerRef.current);
+        if (pollTimerRef.current) {
+          clearInterval(pollTimerRef.current);
+          pollTimerRef.current = null;
+        }
         handleCompleteAuth(res.user);
       } else if (res.status === 'rejected') {
-        clearInterval(pollTimerRef.current);
+        if (pollTimerRef.current) {
+          clearInterval(pollTimerRef.current);
+          pollTimerRef.current = null;
+        }
         setAuthStatus('rejected');
       }
-    }, 1500);
+    };
+
+    // Har 1 soniyada orqa fonda tekshirish
+    pollTimerRef.current = setInterval(checkNow, 1000);
+
+    // Foydalanuvchi Telegramdan brauzer tabiga qaytganida DARHOL tekshirish
+    const onWindowFocus = () => {
+      checkNow();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkNow();
+      }
+    };
+
+    window.addEventListener('focus', onWindowFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
       if (pollTimerRef.current) {
         clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
       }
+      window.removeEventListener('focus', onWindowFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [sessionCode, authStatus]);
 
