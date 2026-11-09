@@ -335,7 +335,11 @@ class AuthHTTPHandler(BaseHTTPRequestHandler):
         # =====================================================================
         # STATIC FRONTEND FILE SERVING (Xavfsiz va Path-Traversal'dan himoyalangan)
         # =====================================================================
-        clean_path = os.path.normpath(parsed.path.lstrip('/'))
+        req_path = parsed.path.lstrip('/')
+        if not req_path or req_path == '.':
+            req_path = 'index.html'
+
+        clean_path = os.path.normpath(req_path)
 
         # XAVFSIZLIK: Directory Traversal (../..) hujumlarini to'xtatish
         if clean_path.startswith('..') or '..' in clean_path.split(os.sep):
@@ -345,7 +349,7 @@ class AuthHTTPHandler(BaseHTTPRequestHandler):
             self.wfile.write(b"403 Forbidden")
             return
 
-        # XAVFSIZLIK: Yashirin va server fayllarini (.env, .git, *.py, server/*.json) himoya qilish
+        # XAVFSIZLIK: Yashirin va server fayllarini (.env, .git, *.py, *.json, server/*.json) himoya qilish
         base_name = os.path.basename(clean_path).lower()
         if (
             clean_path.startswith('.env')
@@ -353,11 +357,13 @@ class AuthHTTPHandler(BaseHTTPRequestHandler):
             or clean_path.endswith('.py')
             or clean_path.endswith('.json')
             or clean_path.startswith('server')
-            or base_name.startswith('.')
+            or (base_name.startswith('.') and base_name != 'index.html')
         ):
             self.send_response(403)
             self._send_cors()
             self.end_headers()
+            self.wfile.write(b"403 Forbidden")
+            return
             self.wfile.write(b"403 Forbidden")
             return
 
