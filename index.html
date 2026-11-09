@@ -9,25 +9,43 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" crossorigin href="./assets/index.css">
+    <link rel="stylesheet" crossorigin href="./assets/index.css?v=20261109_0645">
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Immediate Inline Security Route Guard -->
+    <script>
+      (function() {
+        try {
+          var sessionStr = localStorage.getItem('wm_auth_session');
+          var token = localStorage.getItem('wm_auth_token');
+          var hash = (window.location.hash || '').toLowerCase();
+          var isProtected = hash === '#admin' || hash === '#topics' || hash === '#leaderboard' || hash === '#exam';
+          
+          if (!sessionStr || !token) {
+            if (isProtected) {
+              window.location.hash = '#login';
+            }
+          } else {
+            var session = JSON.parse(sessionStr);
+            if (!session || !session.expiresAt || Date.now() > session.expiresAt) {
+              localStorage.removeItem('wm_auth_session');
+              localStorage.removeItem('wm_auth_token');
+              localStorage.removeItem('wm_user');
+              if (isProtected) {
+                window.location.hash = '#login';
+              }
+            } else if (hash === '#admin' && session.user && session.user.role !== 'admin') {
+              window.location.hash = '#topics';
+            }
+          }
+        } catch (e) {
+          window.location.hash = '#login';
+        }
+      })();
+    </script>
   </head>
   <body class="h-full font-['Plus_Jakarta_Sans',sans-serif] bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased selection:bg-blue-500 selection:text-white transition-colors duration-200">
     <div id="root" class="h-full"></div>
-    <script type="module" src="/src/main.tsx"></script>
-    <script type="module">
-      // VS Code Live Server (Go Live) yoki GitHub Pages uchun avtomatik yuklovchi
-      if (!window.__vite_plugin_react_preamble_installed__) {
-        setTimeout(() => {
-          const root = document.getElementById('root');
-          if (!root || root.children.length === 0) {
-            const script = document.createElement('script');
-            script.type = 'module';
-            script.crossOrigin = 'anonymous';
-            script.src = './assets/index.js';
-            document.body.appendChild(script);
-          }
-        }, 100);
-      }
-    </script>
+    <script type="module" crossorigin src="./assets/index.js?v=20261109_0645"></script>
   </body>
 </html>

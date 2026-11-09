@@ -1,0 +1,50 @@
+[
+  {
+    "id": "usr_admin",
+    "googleId": "admin_master_001",
+    "name": "Hasanboy (Admin)",
+    "email": "hasanboy.azizjonovich@gmail.com",
+    "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=250",
+    "level": "C1",
+    "coins": 2500,
+    "completedEssays": 45,
+    "streakDays": 14,
+    "rank": 1,
+    "joinedAt": "2026-09-01",
+    "role": "admin",
+    "isAuthenticated": true
+  },
+  {
+    "id": "usr_tg_1234567",
+    "telegramId": 1234567,
+    "telegramUsername": "KhomidjonovH",
+    "name": "Hasanboy",
+    "email": "khomidjonovh@telegram.user",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy%20Homidjonov",
+    "level": "C1",
+    "coins": 2500,
+    "completedEssays": 40,
+    "streakDays": 1,
+    "rank": 1,
+    "joinedAt": "2026-11-09",
+    "lastLoginAt": "2026-11-09T01:09:26.863Z",
+    "role": "admin",
+    "isAuthenticated": true
+  },
+  {
+    "id": "usr_tg_7034211289",
+    "telegramId": 7034211289,
+    "telegramUsername": "KhomidjonovH",
+    "name": "Hasanboy",
+    "email": "khomidjonovh@telegram.user",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
+    "level": "C1",
+    "coins": 2500,
+    "completedEssays": 40,
+    "streakDays": 14,
+    "rank": 1,
+    "role": "admin",
+    "joinedAt": "2026-11-09",
+    "isAuthenticated": true
+  }
+]

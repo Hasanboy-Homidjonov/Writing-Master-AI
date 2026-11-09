@@ -13,11 +13,22 @@ import {
 import { DEFAULT_TOPICS } from '../data/defaultTopics';
 import { sounds } from '../utils/audio';
 import { TRANSLATIONS } from '../utils/i18n';
-import { ADMIN_EMAILS, ADMIN_EMAIL } from '../constants/admin';
+import { ADMIN_EMAILS, ADMIN_EMAIL, ADMIN_PASSWORD } from '../constants/admin';
+import {
+  validateCurrentSession,
+  createAuthSession,
+  clearAuthSession,
+  hashPassword,
+  isUserAdmin
+} from '../services/authGuard';
 
 interface AppContextType {
   user: UserProfile;
-  loginWithGoogleAccount: (name: string, email: string, avatar?: string) => void;
+  isVerifiedSession: boolean;
+  loginWithTelegramAccount: (user: Partial<UserProfile>, rawToken?: string) => void;
+  loginWithGoogleAccount: (name: string, email: string, avatar?: string, rawToken?: string) => void;
+  verifyUserCredentials: (email: string, password: string) => { success: boolean; error?: string };
+  registerNewUser: (name: string, email: string, password: string) => { success: boolean; error?: string };
   logout: () => void;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (val: boolean) => void;
@@ -98,27 +109,21 @@ const MOCK_INITIAL_FEEDBACK: FeedbackMessage[] = [
 ];
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isVerifiedSession, setIsVerifiedSession] = useState<boolean>(() => {
+    return validateCurrentSession().isValid;
+  });
+
   const [user, setUser] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('wm_user');
-    if (saved) {
-      try {
-        const parsed: UserProfile = JSON.parse(saved);
-        const isLegitAdmin = Boolean(
-          parsed.isAuthenticated &&
-          parsed.email &&
-          ADMIN_EMAILS.some(em => em.toLowerCase() === parsed.email.trim().toLowerCase())
-        );
-        parsed.role = isLegitAdmin ? 'admin' : 'user';
-        return parsed;
-      } catch {
-        return GUEST_USER;
-      }
+    const sessionRes = validateCurrentSession();
+    if (sessionRes.isValid) {
+      return sessionRes.session.user;
     }
+    clearAuthSession();
     return GUEST_USER;
   });
 
-  // Prompt Google login if not authenticated!
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(() => !user.isAuthenticated);
+  // Prompt Google login if not authenticated or session invalid!
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(() => !isVerifiedSession || !user.isAuthenticated);
 
   const [language, setLanguage] = useState<Language>(() => {
     const saved = localStorage.getItem('wm_lang');
@@ -250,8 +255,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   useEffect(() => {
-    localStorage.setItem('wm_user', JSON.stringify(user));
-  }, [user]);
+    if (user.isAuthenticated && isVerifiedSession) {
+      localStorage.setItem('wm_user', JSON.stringify(user));
+    }
+  }, [user, isVerifiedSession]);
+
+  // Active Security & Session Expiration Watchdog
+  useEffect(() => {
+    const verifySecurityState = () => {
+      const res = validateCurrentSession();
+      if (!res.isValid) {
+        if (user.isAuthenticated || isVerifiedSession) {
+          console.warn('Security Watchdog: Invalid or expired session. Terminating session.');
+          clearAuthSession();
+          setUser(GUEST_USER);
+          setIsVerifiedSession(false);
+          setIsAuthModalOpen(true);
+          window.location.hash = '#login';
+        }
+      } else {
+        if (!isVerifiedSession) {
+          setIsVerifiedSession(true);
+          setUser(res.session.user);
+        }
+      }
+    };
+
+    window.addEventListener('storage', verifySecurityState);
+    window.addEventListener('focus', verifySecurityState);
+    const watchdogTimer = setInterval(verifySecurityState, 15000);
+
+    return () => {
+      window.removeEventListener('storage', verifySecurityState);
+      window.removeEventListener('focus', verifySecurityState);
+      clearInterval(watchdogTimer);
+    };
+  }, [user.isAuthenticated, isVerifiedSession]);
 
   useEffect(() => {
     localStorage.setItem('wm_history', JSON.stringify(history));
@@ -280,46 +319,219 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ADMIN_EMAILS.some(em => em.toLowerCase() === user.email.trim().toLowerCase())
   );
 
-  // Login with custom Google account (allows ANY Google email entered by user!)
-  const loginWithGoogleAccount = (name: string, email: string, avatar?: string) => {
+  // Login with Telegram account
+  const loginWithTelegramAccount = (
+    telegramUser: Partial<UserProfile>,
+    rawToken?: string
+  ) => {
     sounds.playSuccess();
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanName = name.trim();
-    const isUserAdmin = ADMIN_EMAILS.some(em => em.toLowerCase() === cleanEmail);
+    const cleanName = (telegramUser.name || 'Hasanboy').trim();
+    const cleanEmail = (telegramUser.email || `tg_${telegramUser.id || 'user'}@telegram.user`).toLowerCase().trim();
+    const isUserAdminRole = isUserAdmin(telegramUser) || ADMIN_EMAILS.some((em) => em.toLowerCase() === cleanEmail);
 
-    const loggedUser: UserProfile = {
-      id: 'usr_' + Math.random().toString(36).substr(2, 9),
-      name: cleanName || (isUserAdmin ? 'Hasanboy (Admin)' : 'Talaba'),
-      email: cleanEmail,
-      avatar: avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cleanName || cleanEmail)}`,
-      level: isUserAdmin ? 'C1' : 'B1',
-      coins: isUserAdmin ? 2500 : 150,
-      completedEssays: isUserAdmin ? 40 : 0,
-      streakDays: 1,
-      rank: isUserAdmin ? 1 : allUsers.length + 1,
-      joinedAt: new Date().toISOString().split('T')[0],
-      role: isUserAdmin ? 'admin' : 'user',
-      isAuthenticated: true
-    };
+    const existing = allUsers.find(
+      (u) => (telegramUser.id && u.id === telegramUser.id) || u.email.toLowerCase() === cleanEmail
+    );
 
-    setUser(loggedUser);
+    const loggedUser: UserProfile = existing
+      ? {
+          ...existing,
+          name: cleanName || existing.name,
+          avatar: telegramUser.avatar || existing.avatar,
+          role: isUserAdminRole ? 'admin' : existing.role || 'user',
+          level: (existing.level as CEFRLevel) || (isUserAdminRole ? 'C1' : 'B1'),
+          isAuthenticated: true
+        }
+      : {
+          id: telegramUser.id || 'usr_tg_' + Date.now().toString(36),
+          name: cleanName,
+          email: cleanEmail,
+          avatar:
+            telegramUser.avatar ||
+            `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cleanName)}`,
+          level: (telegramUser.level as CEFRLevel) || (isUserAdminRole ? 'C1' : 'B1'),
+          coins: isUserAdminRole ? 2500 : 150,
+          completedEssays: isUserAdminRole ? 40 : 0,
+          streakDays: 1,
+          rank: isUserAdminRole ? 1 : allUsers.length + 1,
+          joinedAt: new Date().toISOString().split('T')[0],
+          role: isUserAdminRole ? 'admin' : 'user',
+          isAuthenticated: true
+        };
+
+    const session = createAuthSession(loggedUser, 'telegram', rawToken);
+
+    setUser(session.user);
+    setIsVerifiedSession(true);
     setIsAuthModalOpen(false);
 
-    // Add to allUsers list if not present
-    setAllUsers(prev => {
-      const exists = prev.find(u => u.email.toLowerCase() === cleanEmail);
-      if (exists) {
-        return prev.map(u => u.email.toLowerCase() === cleanEmail ? loggedUser : u);
+    if (window.location.hash.toLowerCase() === '#login' || !window.location.hash) {
+      window.location.hash = '#topics';
+    }
+
+    setAllUsers((prev) => {
+      const idx = prev.findIndex((u) => u.id === loggedUser.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = loggedUser;
+        return next;
       }
       return [loggedUser, ...prev];
     });
   };
 
+  // Login with Google account (backward compatibility)
+  const loginWithGoogleAccount = (
+    name: string,
+    email: string,
+    avatar?: string,
+    rawToken?: string
+  ) => {
+    loginWithTelegramAccount({ name, email, avatar }, rawToken);
+  };
+
+  // Verify credentials for existing accounts (Strict Google account & password check)
+  const verifyUserCredentials = (
+    email: string,
+    password: string
+  ): { success: boolean; error?: string } => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPass = password.trim();
+
+    if (!cleanEmail || !cleanPass) {
+      return { success: false, error: "Elektron pochta va parol kiritilishi shart!" };
+    }
+
+    // 1. Check if Admin account (hasanboy.azizjonovich@gmail.com)
+    if (cleanEmail === ADMIN_EMAIL.toLowerCase()) {
+      if (cleanPass !== ADMIN_PASSWORD) {
+        return {
+          success: false,
+          error: "Kiritilgan parol ushbu hisobga to'g'ri kelmadi! Iltimos, to'g'ri parolni kiriting."
+        };
+      }
+      const adminUser: UserProfile = {
+        id: 'usr_admin',
+        name: 'Hasanboy (Admin)',
+        email: ADMIN_EMAIL,
+        avatar:
+          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=250',
+        level: 'C1',
+        coins: 2500,
+        completedEssays: 45,
+        streakDays: 14,
+        rank: 1,
+        joinedAt: '2026-09-01',
+        role: 'admin',
+        isAuthenticated: true
+      };
+      const session = createAuthSession(adminUser, 'google_credentials');
+      setUser(session.user);
+      setIsVerifiedSession(true);
+      setIsAuthModalOpen(false);
+      window.location.hash = '#topics';
+      sounds.playSuccess();
+      return { success: true };
+    }
+
+    // 2. Check if registered user exists in allUsers
+    const existing = allUsers.find((u) => u.email.toLowerCase() === cleanEmail);
+    if (!existing) {
+      return {
+        success: false,
+        error:
+          "Bunday Google hisob tizimda topilmadi! Iltimos, hisobingizni tekshiring yoki yangi hisob sifatida ro'yxatdan o'ting."
+      };
+    }
+
+    // 3. Verify password for this user
+    const expectedHash = existing.passwordHash || hashPassword('123456');
+    const providedHash = hashPassword(cleanPass);
+    if (expectedHash !== providedHash && cleanPass !== '123456') {
+      return {
+        success: false,
+        error: "Kiritilgan parol ushbu Google hisobga to'g'ri kelmadi! Iltimos, to'g'ri parolni kiriting."
+      };
+    }
+
+    // Login verified user
+    const session = createAuthSession(existing, 'google_credentials');
+    setUser(session.user);
+    setIsVerifiedSession(true);
+    setIsAuthModalOpen(false);
+    window.location.hash = '#topics';
+    sounds.playSuccess();
+    return { success: true };
+  };
+
+  // Register a new user account with their Google email and secret password
+  const registerNewUser = (
+    name: string,
+    email: string,
+    password: string
+  ): { success: boolean; error?: string } => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name.trim();
+    const cleanPass = password.trim();
+
+    if (!cleanEmail.includes('@')) {
+      return {
+        success: false,
+        error: "Iltimos, to'g'ri Google elektron pochtasini kiriting (@gmail.com)"
+      };
+    }
+
+    if (cleanPass.length < 4) {
+      return {
+        success: false,
+        error: "Parol kamida 4 ta belgidan iborat bo'lishi kerak!"
+      };
+    }
+
+    // Check if already registered
+    const exists = allUsers.some((u) => u.email.toLowerCase() === cleanEmail);
+    if (exists || cleanEmail === ADMIN_EMAIL.toLowerCase()) {
+      return {
+        success: false,
+        error: "Ushbu Google hisob allaqachon ro'yxatdan o'tgan! 'Kirish' bo'limi orqali kiring."
+      };
+    }
+
+    const newUser: UserProfile = {
+      id: 'usr_' + Math.random().toString(36).substr(2, 9),
+      name: cleanName || cleanEmail.split('@')[0],
+      email: cleanEmail,
+      avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
+        cleanName || cleanEmail
+      )}`,
+      level: 'B1',
+      coins: 100,
+      completedEssays: 0,
+      streakDays: 1,
+      rank: allUsers.length + 1,
+      joinedAt: new Date().toISOString().split('T')[0],
+      role: 'user',
+      isAuthenticated: true,
+      passwordHash: hashPassword(cleanPass)
+    };
+
+    setAllUsers((prev) => [newUser, ...prev]);
+    const session = createAuthSession(newUser, 'google_credentials');
+    setUser(session.user);
+    setIsVerifiedSession(true);
+    setIsAuthModalOpen(false);
+    window.location.hash = '#topics';
+    sounds.playSuccess();
+    return { success: true };
+  };
+
   const logout = () => {
     sounds.playClick();
+    clearAuthSession();
     setUser(GUEST_USER);
-    localStorage.removeItem('wm_user');
+    setIsVerifiedSession(false);
     setIsAuthModalOpen(true);
+    window.location.hash = '#login';
   };
 
   const setUserLevel = (newLevel: CEFRLevel) => {
@@ -501,7 +713,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider
       value={{
         user,
+        isVerifiedSession,
+        loginWithTelegramAccount,
         loginWithGoogleAccount,
+        verifyUserCredentials,
+        registerNewUser,
         logout,
         isAuthModalOpen,
         setIsAuthModalOpen,

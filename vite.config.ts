@@ -6,6 +6,7 @@ export default defineConfig({
   base: './',
   build: {
     rollupOptions: {
+      input: './src/main.tsx',
       output: {
         entryFileNames: 'assets/index.js',
         chunkFileNames: 'assets/[name].js',
@@ -15,6 +16,6 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    open: false,
-  },
+    open: false
+  }
 });

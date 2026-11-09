@@ -13,6 +13,7 @@ import { FeedbackModal } from './components/FeedbackModal';
 import { GoogleAuthModal } from './components/GoogleAuthModal';
 import { AdminPasswordModal } from './components/AdminPasswordModal';
 import { AuthScreen } from './components/AuthScreen';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { WritingTopic, CEFRLevel } from './types';
 
 export const AppContent: React.FC = () => {
@@ -30,7 +31,8 @@ export const AppContent: React.FC = () => {
     isExamOpen,
     isAuthModalOpen,
     setIsAuthModalOpen,
-    user
+    user,
+    isVerifiedSession
   } = useApp();
 
   const [activeView, setActiveView] = useState<'topics' | 'leaderboard' | 'admin'>('topics');
@@ -47,20 +49,68 @@ export const AppContent: React.FC = () => {
     setTimeout(() => setToast(null), 4000);
   };
 
+  // URL Hash Route Guard (Intercepts direct URL navigation like #admin, #leaderboard, #topics)
+  useEffect(() => {
+    const handleHashRouting = () => {
+      const hash = (window.location.hash || '').toLowerCase().replace(/^#/, '');
+
+      // 1. If unauthenticated, redirect all protected hashes to #login immediately (except Telegram auth payload)
+      if (!user.isAuthenticated || !isVerifiedSession) {
+        if (hash && hash !== 'login' && !hash.startsWith('tg_auth') && !hash.startsWith('auth=')) {
+          window.location.hash = '#login';
+        }
+        return;
+      }
+
+      // 2. If authenticated, handle protected views
+      if (hash === 'admin') {
+        if (!isAdmin) {
+          showToast("Ruxsat yo'q: Faqat Admin Hasanboy boshqaruv paneliga kira oladi!", "error");
+          setActiveView('topics');
+          window.location.hash = '#topics';
+          return;
+        }
+        if (!isAdminUnlocked) {
+          setIsAdminPasswordModalOpen(true);
+        } else {
+          setActiveView('admin');
+        }
+      } else if (hash === 'leaderboard') {
+        setActiveView('leaderboard');
+      } else if (hash === 'topics') {
+        setActiveView('topics');
+      }
+    };
+
+    handleHashRouting();
+    window.addEventListener('hashchange', handleHashRouting);
+    return () => window.removeEventListener('hashchange', handleHashRouting);
+  }, [user.isAuthenticated, isVerifiedSession, isAdmin, isAdminUnlocked]);
+
+  // Sync active view changes to URL hash
+  const handleViewChange = (view: 'topics' | 'leaderboard' | 'admin') => {
+    if (view === 'admin' && !isAdmin) {
+      showToast("Faqat Hasanboy admin sifatida kira oladi!", "error");
+      return;
+    }
+    setActiveView(view);
+    window.location.hash = '#' + view;
+  };
+
   const handleOpenAdmin = () => {
     if (!isAdmin) {
       showToast("Faqat Hasanboy admin sifatida kira oladi!", "error");
       return;
     }
     if (isAdminUnlocked) {
-      setActiveView('admin');
+      handleViewChange('admin');
     } else {
       setIsAdminPasswordModalOpen(true);
     }
   };
 
   const handleStartExam = (topic: WritingTopic, level?: CEFRLevel) => {
-    if (!user.isAuthenticated) {
+    if (!user.isAuthenticated || !isVerifiedSession) {
       setIsAuthModalOpen(true);
       return;
     }
@@ -72,18 +122,19 @@ export const AppContent: React.FC = () => {
     showToast(reason, "error");
   };
 
-  // Foydalanuvchi tizimdan chiqqanda holatlarni tozalash
+  // If unauthenticated or session invalid, purge all open views and enforce login
   useEffect(() => {
-    if (!user.isAuthenticated) {
+    if (!user.isAuthenticated || !isVerifiedSession) {
       setActiveView('topics');
       setIsAdminUnlocked(false);
       setIsProfileOpen(false);
+      window.location.hash = '#login';
     }
-  }, [user.isAuthenticated]);
+  }, [user.isAuthenticated, isVerifiedSession]);
 
-  // AGAR FOYDALANUVCHI RO'YXATDAN O'TMAGAN BO'LSA YOKI CHIQIB KETGAN BO'LSA:
-  // Bosh menyu ochilmaydi! Dastur yangi akkaunt bilan kirishni kutadi.
-  if (!user.isAuthenticated) {
+  // STRICT GLOBAL ROUTE GUARD:
+  // If not authenticated or session not verified, show login screen immediately.
+  if (!user.isAuthenticated || !isVerifiedSession) {
     return <AuthScreen />;
   }
 
@@ -117,39 +168,46 @@ export const AppContent: React.FC = () => {
         }}
         onRequestAdmin={handleOpenAdmin}
         activeView={activeView}
-        setActiveView={setActiveView}
+        setActiveView={handleViewChange}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 pb-16">
-        {activeResult ? (
-          <EvaluationResult
-            data={activeResult}
-            onBack={() => setActiveResult(null)}
-            onRetry={() => {
-              const topic = currentTopic;
-              setActiveResult(null);
-              startExam(topic);
-            }}
-          />
-        ) : activeView === 'admin' && isAdmin ? (
-          <AdminDashboard onBack={() => setActiveView('topics')} />
-        ) : activeView === 'topics' ? (
-          <TopicsView
-            onStartExam={handleStartExam}
-            onOpenAddTopic={() => {
-              if (!user.isAuthenticated) {
-                setIsAuthModalOpen(true);
-              } else {
-                setIsAddTopicOpen(true);
-              }
-            }}
-            onOpenLevelTest={() => setIsLevelTestOpen(true)}
-          />
-        ) : (
-          <LeaderboardView />
-        )}
-      </main>
+      {/* Main Content Area Protected by Route Guard */}
+      <ProtectedRoute>
+        <main className="flex-1 pb-16">
+          {activeResult ? (
+            <EvaluationResult
+              data={activeResult}
+              onBack={() => setActiveResult(null)}
+              onRetry={() => {
+                const topic = currentTopic;
+                setActiveResult(null);
+                startExam(topic);
+              }}
+            />
+          ) : activeView === 'admin' ? (
+            <ProtectedRoute
+              requiredRole="admin"
+              onAccessDenied={() => handleViewChange('topics')}
+            >
+              <AdminDashboard onBack={() => handleViewChange('topics')} />
+            </ProtectedRoute>
+          ) : activeView === 'topics' ? (
+            <TopicsView
+              onStartExam={handleStartExam}
+              onOpenAddTopic={() => {
+                if (!user.isAuthenticated) {
+                  setIsAuthModalOpen(true);
+                } else {
+                  setIsAddTopicOpen(true);
+                }
+              }}
+              onOpenLevelTest={() => setIsLevelTestOpen(true)}
+            />
+          ) : (
+            <LeaderboardView />
+          )}
+        </main>
+      </ProtectedRoute>
 
       {/* Footer */}
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 py-6 text-center text-xs text-slate-500 dark:text-slate-400 transition-colors">

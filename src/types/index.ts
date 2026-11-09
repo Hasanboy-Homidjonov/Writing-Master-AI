@@ -16,6 +16,7 @@ export interface UserProfile {
   joinedAt: string;
   role: UserRole;
   isAuthenticated: boolean;
+  passwordHash?: string;
 }
 
 export interface WritingTopic {

@@ -5,15 +5,23 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Environment files
+# Environment files (Maxfiy tokenlar saqlanadi - gitga chiqmasligi shart)
 .env
 .env.local
 .env.*.local
 
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
 # Editor directories
+.vscode/
 .idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+.DS_Store
