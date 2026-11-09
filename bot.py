@@ -59,8 +59,12 @@ def load_sessions():
         sessions = {}
 
 def save_sessions():
-    # Live Server qayta yuklanishini oldini olish uchun sessiyalar faqat RAM xotirada saqlanadi
-    pass
+    try:
+        os.makedirs(os.path.dirname(SESSIONS_FILE), exist_ok=True)
+        with open(SESSIONS_FILE, "w", encoding="utf-8") as f:
+            json.dump(sessions, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        pass
 
 def save_user_profile(user_data):
     try:

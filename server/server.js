@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 import {
   createAuthSession,
   getAuthSessionStatus,
@@ -96,6 +97,53 @@ if (fs.existsSync(distPath)) {
   });
 }
 
+// Telegram Botni (bot.py) server bilan birga avtomatik ishga tushirish
+let botProc = null;
+
+function launchTelegramBot() {
+  if (process.env.DISABLE_EMBEDDED_BOT === 'true') {
+    console.log('ℹ️ O\'rnatilgan bot o\'chirilgan (DISABLE_EMBEDDED_BOT=true).');
+    return;
+  }
+
+  const isWindows = process.platform === 'win32';
+  const pyCmd = isWindows ? 'python' : 'python3';
+  const botPath = path.resolve(__dirname, '..', 'bot.py');
+
+  try {
+    console.log(`🤖 Telegram Bot avtomatik ishga tushirilmoqda: ${pyCmd} bot.py...`);
+    botProc = spawn(pyCmd, [botPath], {
+      stdio: 'inherit',
+      cwd: path.resolve(__dirname, '..'),
+      env: { ...process.env, PYTHONUNBUFFERED: '1' }
+    });
+
+    botProc.on('error', (err) => {
+      console.warn(`[Bot Spawn Notice] ${pyCmd} bilan ishga tushmadi (${err.message}). Agar alohida 'python bot.py' ishlatayotgan bo'lsangiz, bu normal holat.`);
+    });
+
+    botProc.on('exit', (code) => {
+      if (code !== 0 && code !== null) {
+        console.log(`Bot jarayoni to'xtadi (kod: ${code})`);
+      }
+    });
+  } catch (err) {
+    console.warn('[Bot ishga tushirish ogohlantirishi]:', err);
+  }
+}
+
+process.on('SIGINT', () => {
+  if (botProc) botProc.kill();
+  process.exit();
+});
+
+process.on('SIGTERM', () => {
+  if (botProc) botProc.kill();
+  process.exit();
+});
+
 app.listen(PORT, () => {
-  console.log(`Writing Master Server running on port ${PORT}`);
+  console.log(`🚀 Writing Master Server running on port ${PORT}`);
+  // Faqat server ishga tushgandan so'ng botni orqa fonda birga qo'shib yuborish
+  launchTelegramBot();
 });
