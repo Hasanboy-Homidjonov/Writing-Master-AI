@@ -60,32 +60,50 @@ export interface TelegramStatusResponse {
 export const BOT_USERNAME =
   (import.meta as any).env?.VITE_TELEGRAM_BOT_USERNAME || 'Write_English_bot';
 
+export interface TelegramHashAuthResult {
+  user?: TelegramAuthUser;
+  rejected?: boolean;
+}
+
 /**
- * Hash orqali Telegram autentifikatsiyani tekshirish (#auth=code)
+ * Hash yoki Callback URL orqali Telegram autentifikatsiyani tekshirish (#auth=code&status=success/rejected)
  * Xavfsizlik: Faqat server tomonidan tasdiqlangan sessiya kodlari qabul qilinadi.
  */
-export async function resolveTelegramHashAuth(): Promise<TelegramAuthUser | null> {
+export async function resolveTelegramHashAuth(): Promise<TelegramHashAuthResult | null> {
   try {
     if (typeof window === 'undefined') return null;
     const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    const fullParams = hash + '&' + search.replace(/^\?/, '');
 
-    // Qisqa va xavfsiz havola (#auth=auth_123)
-    if (hash.includes('auth=')) {
-      const match = hash.match(/auth=([^&]+)/);
-      const code = match ? match[1] : '';
-      if (code && code.startsWith('auth_')) {
-        const res = await checkTelegramLoginStatus(code);
-        if (res.status === 'confirmed' && res.user) {
-          // Xavfsizlik: URL hash'dagi bir martalik kodni tozalab qo'yamiz
-          try {
-            window.history.replaceState(null, '', window.location.pathname + '#topics');
-          } catch (e) {}
-          return res.user;
-        }
+    // 1. Agar foydalanuvchi Telegram botda rad etgan (rejected) bo'lsa
+    if (fullParams.includes('status=rejected') || fullParams.includes('rejected')) {
+      try {
+        window.history.replaceState(null, '', window.location.pathname + '#login');
+      } catch (e) {}
+      return { rejected: true };
+    }
+
+    // 2. Muvaffaqiyatli kirish: auth=code yoki session_id=code
+    const match = fullParams.match(/(?:auth|session_id)=([^&]+)/);
+    const code = match ? match[1] : '';
+
+    if (code && code.startsWith('auth_')) {
+      const res = await checkTelegramLoginStatus(code);
+      if (res.status === 'confirmed' && res.user) {
+        try {
+          window.history.replaceState(null, '', window.location.pathname + '#topics');
+        } catch (e) {}
+        return { user: res.user };
+      } else if (res.status === 'rejected') {
+        try {
+          window.history.replaceState(null, '', window.location.pathname + '#login');
+        } catch (e) {}
+        return { rejected: true };
       }
     }
   } catch (e) {
-    console.error('Error parsing auth hash:', e);
+    console.error('Error parsing auth hash/query:', e);
   }
   return null;
 }

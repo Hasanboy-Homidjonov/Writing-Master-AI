@@ -12,7 +12,19 @@ const ADMIN_USERNAMES = (process.env.ADMIN_TELEGRAM_USERNAMES || 'KhomidjonovH,K
   .split(',')
   .map((u) => u.trim().replace(/^@/, ''));
 
-const SITE_URL = process.env.SITE_URL || 'http://localhost:3000';
+function getSiteUrl() {
+  const envVal = process.env.WEBAPP_URL || process.env.SITE_URL || process.env.RENDER_EXTERNAL_URL || process.env.PUBLIC_URL;
+  if (envVal && !envVal.includes('localhost') && !envVal.includes('127.0.0.1')) {
+    let clean = envVal.trim();
+    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+      clean = `https://${clean}`;
+    }
+    return clean.replace(/\/+$/, '');
+  }
+  return (process.env.SITE_URL || 'https://writing-master-ai.onrender.com').replace(/\/+$/, '');
+}
+
+const SITE_URL = getSiteUrl();
 const DB_PATH = path.join(__dirname, 'users.json');
 const SESSIONS_PATH = path.join(__dirname, 'telegram_sessions.json');
 
@@ -75,8 +87,34 @@ export function createAuthSession() {
 
 export function getAuthSessionStatus(code) {
   if (!code) return { status: 'invalid' };
-  const session = activeSessions.get(code);
+
+  // bot.py va server o'rtasida sessiyalarni to'liq sinxronlashtirish
+  const diskSessions = readSessions();
+  let session = diskSessions.get(code) || activeSessions.get(code);
+
+  const latest = diskSessions.get('latest');
+  if ((!session || session.status === 'pending') && latest && latest.status === 'confirmed') {
+    const confirmedAt = latest.confirmedAt || (latest.createdAt ? latest.createdAt / 1000 : 0);
+    if (Date.now() / 1000 - confirmedAt < 45) {
+      session = latest;
+    }
+  }
+
   if (!session) return { status: 'not_found' };
+
+  // Xavfsizlik: Bir martalik foydalanish (Logout dan so'ng qayta kirishning oldini oladi)
+  if (session.status === 'confirmed') {
+    const user = session.user;
+    session.status = 'consumed';
+    diskSessions.delete('latest');
+    saveSessions(diskSessions);
+    activeSessions.set(code, session);
+    return {
+      status: 'confirmed',
+      user,
+      sessionToken: session.sessionToken
+    };
+  }
 
   return {
     status: session.status,
@@ -337,8 +375,8 @@ async function handleUpdate(update) {
       const from = cb.from;
 
       // User confirmed login: "Ha, kiraman"
-      if (data.startsWith('confirm_')) {
-        const code = data.replace('confirm_', '');
+      if (data.startsWith('confirm_') || data.startsWith('auth_allow:')) {
+        const code = data.includes(':') ? data.split(':')[1] : data.replace('confirm_', '');
         let session = activeSessions.get(code);
 
         if (!session) {
@@ -357,6 +395,7 @@ async function handleUpdate(update) {
         session.user = user;
         session.sessionToken = sessionToken;
         session.confirmedAt = Date.now();
+        activeSessions.set('latest', session);
         saveSessions(activeSessions);
 
         await tgApi('answerCallbackQuery', {
@@ -365,18 +404,24 @@ async function handleUpdate(update) {
           show_alert: false
         });
 
+        const callbackUrl = `${SITE_URL}/auth/callback?session_id=${code}&status=success`;
         await tgApi('editMessageText', {
           chat_id: chatId,
           message_id: messageId,
-          text: `✅ <b>Kirish muvaffaqiyatli tasdiqlandi!</b>\n\n🎉 Xush kelibsiz, <b>${user.name}</b>!\nEndi brauzer sahifasiga qaytishingiz mumkin — siz to'liq kirdingiz.`,
-          parse_mode: 'HTML'
+          text: `✅ <b>Muvaffaqiyatli kirdingiz! Saytga qaytishingiz mumkin.</b>\n\n🎉 Xush kelibsiz, <b>${user.name}</b>!\nProfilingiz tasdiqlandi. Saytga o'tish uchun quyidagi tugmani bosing:`,
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🚀 Saytga o'tish (Muvaffaqiyatli)", url: callbackUrl }]
+            ]
+          }
         });
         return;
       }
 
       // User rejected login: "Yo'q, bekor qilish"
-      if (data.startsWith('reject_')) {
-        const code = data.replace('reject_', '');
+      if (data.startsWith('reject_') || data.startsWith('auth_deny:')) {
+        const code = data.includes(':') ? data.split(':')[1] : data.replace('reject_', '');
         let session = activeSessions.get(code);
 
         if (session) {
@@ -390,11 +435,17 @@ async function handleUpdate(update) {
           show_alert: false
         });
 
+        const callbackUrl = `${SITE_URL}/auth/callback?session_id=${code}&status=rejected`;
         await tgApi('editMessageText', {
           chat_id: chatId,
           message_id: messageId,
-          text: `❌ <b>Kirish so'rovi bekor qilindi.</b>\n\nSaytga kirish ruxsati berilmadi.`,
-          parse_mode: 'HTML'
+          text: `🚫 <b>Kirish bekor qilindi.</b>\n\nSaytga kirish so'rovi rad etildi. Saytga qaytish uchun quyidagi tugmani bosing:`,
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "❌ Saytga qaytish (Bekor qilindi)", url: callbackUrl }]
+            ]
+          }
         });
         return;
       }

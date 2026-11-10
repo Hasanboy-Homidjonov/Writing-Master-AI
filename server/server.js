@@ -40,6 +40,16 @@ app.all('/api/auth/logout', (req, res) => {
 });
 
 /**
+ * Render & Production /auth/callback redirect handler
+ * Telegram botdan "Saytga o'tish" yoki "Saytga qaytish" bosilganda SPA hash marshrutiga yo'naltirish
+ */
+app.get('/auth/callback', (req, res) => {
+  const sessionId = req.query.session_id || req.query.code || '';
+  const status = req.query.status || 'success';
+  return res.redirect(`/#auth=${sessionId}&status=${status}`);
+});
+
+/**
  * 1. Yangi Telegram login sessiyasini yaratish
  * POST /api/auth/telegram/create-session
  */

@@ -50,9 +50,13 @@ export const TelegramSignInCard: React.FC<TelegramSignInCardProps> = ({
 
     // A) URL Hash tekshirish
     if (!forceNew) {
-      const hashUser = await resolveTelegramHashAuth();
-      if (hashUser) {
-        handleCompleteAuth(hashUser);
+      const hashResult = await resolveTelegramHashAuth();
+      if (hashResult?.user) {
+        handleCompleteAuth(hashResult.user);
+        return;
+      }
+      if (hashResult?.rejected) {
+        setAuthStatus('rejected');
         return;
       }
     }
@@ -110,9 +114,11 @@ export const TelegramSignInCard: React.FC<TelegramSignInCardProps> = ({
 
     // URL hash o'zgarishini kuzatish
     const handleHashChange = async () => {
-      const hashUser = await resolveTelegramHashAuth();
-      if (hashUser) {
-        handleCompleteAuth(hashUser);
+      const hashResult = await resolveTelegramHashAuth();
+      if (hashResult?.user) {
+        handleCompleteAuth(hashResult.user);
+      } else if (hashResult?.rejected) {
+        setAuthStatus('rejected');
       }
     };
     window.addEventListener('hashchange', handleHashChange);

@@ -45,29 +45,32 @@ USERS_FILE = os.path.join(SCRIPT_DIR, "server", "users.json")
 SESSIONS_FILE = os.path.join(SCRIPT_DIR, "server", "telegram_sessions.json")
 
 def get_site_url():
-    # 1. Cloud environment variables (Render, Railway, Heroku, etc.)
-    for env_key in ("SITE_URL", "RENDER_EXTERNAL_URL", "RAILWAY_PUBLIC_DOMAIN", "PUBLIC_URL"):
+    # 1. Cloud environment variables (Render avtomatik beradigan RENDER_EXTERNAL_URL yoki WEBAPP_URL / SITE_URL)
+    for env_key in ("WEBAPP_URL", "SITE_URL", "RENDER_EXTERNAL_URL", "RAILWAY_PUBLIC_DOMAIN", "PUBLIC_URL"):
         val = (os.environ.get(env_key) or "").strip()
         if val and "localhost" not in val and "127.0.0.1" not in val:
             if not val.startswith("http://") and not val.startswith("https://"):
                 val = f"https://{val}"
-            return val
+            return val.rstrip("/")
 
-    # 2. .env faylidan o'qish (faqat haqiqiy production domen bo'lsa)
+    # 2. .env faylidan o'qish (WEBAPP_URL yoki SITE_URL)
     env_file = os.path.join(SCRIPT_DIR, ".env")
     if os.path.exists(env_file):
         try:
             with open(env_file, "r", encoding="utf-8") as f:
                 for line in f:
                     stripped = line.strip()
-                    if stripped.startswith("SITE_URL="):
-                        val = stripped.split("=", 1)[1].strip().strip('"').strip("'")
-                        if val and not val.startswith("#") and "localhost" not in val and "127.0.0.1" not in val:
-                            return val
+                    for prefix in ("WEBAPP_URL=", "SITE_URL="):
+                        if stripped.startswith(prefix):
+                            val = stripped.split("=", 1)[1].strip().strip('"').strip("'")
+                            if val and not val.startswith("#") and "localhost" not in val and "127.0.0.1" not in val:
+                                if not val.startswith("http://") and not val.startswith("https://"):
+                                    val = f"https://{val}"
+                                return val.rstrip("/")
         except Exception:
             pass
 
-    # 3. Wi-Fi / Lokal tarmoq IP manzilini aniqlash (telefonda ochilganda ishlashi uchun)
+    # 3. Wi-Fi / Lokal tarmoq IP manzilini aniqlash (faqat lokal offline rejimda ishlaganda)
     try:
         import socket
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -256,6 +259,16 @@ class AuthHTTPHandler(BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
 
+        # Render & Production /auth/callback redirect handler
+        if parsed.path in ('/auth/callback', '/auth/callback/'):
+            session_id = (qs.get('session_id') or qs.get('code') or [''])[0]
+            status = (qs.get('status') or ['success'])[0]
+            self.send_response(302)
+            self._send_cors()
+            self.send_header('Location', f"/#auth={session_id}&status={status}")
+            self.end_headers()
+            return
+
         if parsed.path in ('/api/auth/telegram/status', '/status'):
             code = (qs.get('code') or [''])[0]
             with sessions_lock:
@@ -362,8 +375,6 @@ class AuthHTTPHandler(BaseHTTPRequestHandler):
             self.send_response(403)
             self._send_cors()
             self.end_headers()
-            self.wfile.write(b"403 Forbidden")
-            return
             self.wfile.write(b"403 Forbidden")
             return
 
@@ -556,8 +567,8 @@ def handle_message(msg):
         markup = {
             "inline_keyboard": [
                 [
-                    {"text": "✅ Ha, kiraman", "callback_data": f"confirm_{session_code}"},
-                    {"text": "❌ Yo'q, bekor qilish", "callback_data": f"reject_{session_code}"}
+                    {"text": "✅ Ha, kirish", "callback_data": f"auth_allow:{session_code}"},
+                    {"text": "❌ Yo'q, bekor qilish", "callback_data": f"auth_deny:{session_code}"}
                 ],
                 [
                     {"text": "📚 Yordam (/help)", "callback_data": "help_info"},
@@ -593,8 +604,9 @@ def handle_callback(cb):
 
     print(f"🔘 [{time.strftime('%H:%M:%S')}] Tugma bosildi: {name}: {data}")
 
-    if data.startswith("confirm_"):
-        session_code = data.replace("confirm_", "")
+    # Muvaffaqiyatli kirish: auth_allow:auth_xxx yoki confirm_auth_xxx
+    if data.startswith("auth_allow:") or data.startswith("confirm_"):
+        session_code = data.split(":", 1)[1] if ":" in data else data.replace("confirm_", "")
         user_profile = {
             "id": f"usr_tg_{from_user.get('id')}",
             "telegramId": from_user.get("id"),
@@ -625,19 +637,18 @@ def handle_callback(cb):
             sessions["latest"] = sessions[session_code]
             save_sessions()
 
-        # Qisqa, toza va chiroyli havola (telefon va server uchun dinamik)
         site_url = get_site_url()
-        direct_auth_url = f"{site_url}#auth={session_code}" if "#" not in site_url else site_url
+        callback_url = f"{site_url}/auth/callback?session_id={session_code}&status=success"
 
-        tg_api("answerCallbackQuery", {"callback_query_id": cb_id, "text": "✅ Kirish tasdiqlandi!"})
+        tg_api("answerCallbackQuery", {"callback_query_id": cb_id, "text": "✅ Muvaffaqiyatli kirdingiz!"})
         success_text = (
-            f"✅ <b>Kirish muvaffaqiyatli tasdiqlandi!</b>\n\n"
+            f"✅ <b>Muvaffaqiyatli kirdingiz! Saytga qaytishingiz mumkin.</b>\n\n"
             f"🎉 Xush kelibsiz, <b>{name}</b>!\n"
-            f"Profilingiz faollashtirildi va saytga ulandi. Brauzeringizdagi sahifadan foydalanishni davom ettirishingiz mumkin."
+            f"Profilingiz faollashtirildi. Saytga o'tish uchun quyidagi tugmani bosing:"
         )
         markup = {
             "inline_keyboard": [
-                [{"text": "🚀 Saytga o'tish", "url": direct_auth_url}]
+                [{"text": "🚀 Saytga o'tish (Muvaffaqiyatli)", "url": callback_url}]
             ]
         }
         tg_api("editMessageText", {
@@ -645,8 +656,9 @@ def handle_callback(cb):
         })
         return
 
-    if data.startswith("reject_"):
-        session_code = data.replace("reject_", "")
+    # Kirishni rad etish: auth_deny:auth_xxx yoki reject_auth_xxx
+    if data.startswith("auth_deny:") or data.startswith("reject_"):
+        session_code = data.split(":", 1)[1] if ":" in data else data.replace("reject_", "")
         with sessions_lock:
             sessions[session_code] = {
                 "code": session_code,
@@ -656,9 +668,21 @@ def handle_callback(cb):
             sessions["latest"] = sessions[session_code]
             save_sessions()
 
-        tg_api("answerCallbackQuery", {"callback_query_id": cb_id, "text": "❌ Kirish bekor qilindi"})
+        site_url = get_site_url()
+        callback_url = f"{site_url}/auth/callback?session_id={session_code}&status=rejected"
+
+        tg_api("answerCallbackQuery", {"callback_query_id": cb_id, "text": "🚫 Kirish bekor qilindi"})
+        rejected_text = (
+            "🚫 <b>Kirish bekor qilindi.</b>\n\n"
+            "Saytga kirish so'rovi rad etildi. Saytga qaytish uchun quyidagi tugmani bosing:"
+        )
+        markup = {
+            "inline_keyboard": [
+                [{"text": "❌ Saytga qaytish (Bekor qilindi)", "url": callback_url}]
+            ]
+        }
         tg_api("editMessageText", {
-            "chat_id": chat_id, "message_id": msg_id, "text": "❌ <b>Kirish so'rovi bekor qilindi.</b>\nSaytga kirish ruxsati berilmadi.", "parse_mode": "HTML"
+            "chat_id": chat_id, "message_id": msg_id, "text": rejected_text, "parse_mode": "HTML", "reply_markup": markup
         })
         return
 

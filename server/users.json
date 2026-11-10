@@ -44,7 +44,7 @@
     "streakDays": 14,
     "rank": 1,
     "role": "admin",
-    "joinedAt": "2026-11-09",
+    "joinedAt": "2026-11-10",
     "isAuthenticated": true
   },
   {
@@ -86,6 +86,22 @@
     "name": "Hasanboy",
     "email": "tg_7744395518@writingmaster.app",
     "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
+    "level": "B1",
+    "coins": 150,
+    "completedEssays": 0,
+    "streakDays": 1,
+    "rank": 12,
+    "role": "user",
+    "joinedAt": "2026-11-09",
+    "isAuthenticated": true
+  },
+  {
+    "id": "usr_tg_6590903428",
+    "telegramId": 6590903428,
+    "telegramUsername": "",
+    "name": "Isaqov🫀",
+    "email": "tg_6590903428@writingmaster.app",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Isaqov%F0%9F%AB%80",
     "level": "B1",
     "coins": 150,
     "completedEssays": 0,
