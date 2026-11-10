@@ -123,8 +123,25 @@ export const TelegramSignInCard: React.FC<TelegramSignInCardProps> = ({
     };
     window.addEventListener('hashchange', handleHashChange);
 
+    // Boshqa tabda (masalan, Telegram tugmasidan ochilgan yangi tabda) kirilgan bo'lsa, ushbu tabda ham darhol kirish
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'wm_auth_session' || e.key === 'wm_user') {
+        if (e.newValue) {
+          try {
+            const data = JSON.parse(e.newValue);
+            const u = data.user || data;
+            if (u && (u.name || u.telegramId)) {
+              handleCompleteAuth(u);
+            }
+          } catch (err) {}
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('storage', handleStorageChange);
       if (pollTimerRef.current) {
         clearInterval(pollTimerRef.current);
         pollTimerRef.current = null;

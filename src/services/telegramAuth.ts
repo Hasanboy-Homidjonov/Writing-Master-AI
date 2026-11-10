@@ -84,7 +84,26 @@ export async function resolveTelegramHashAuth(): Promise<TelegramHashAuthResult 
       return { rejected: true };
     }
 
-    // 2. Muvaffaqiyatli kirish: auth=code yoki session_id=code
+    // 2. tg_auth yoki tg_user payload (base64 JSON) - Render Static Site va har qanday statik hostingda server-less bir zumda ishlaydi
+    const tgAuthMatch = fullParams.match(/(?:tg_auth|tg_user)=([^&]+)/);
+    if (tgAuthMatch && tgAuthMatch[1]) {
+      try {
+        let raw = decodeURIComponent(tgAuthMatch[1]);
+        while (raw.length % 4 !== 0) raw += '=';
+        const decoded = atob(raw.replace(/-/g, '+').replace(/_/g, '/'));
+        const userObj = JSON.parse(decoded);
+        if (userObj && (userObj.id || userObj.telegramId || userObj.name)) {
+          try {
+            window.history.replaceState(null, '', window.location.pathname + '#topics');
+          } catch (e) {}
+          return { user: userObj };
+        }
+      } catch (err) {
+        console.error('Error decoding tg_auth payload:', err);
+      }
+    }
+
+    // 3. Muvaffaqiyatli kirish: auth=code yoki session_id=code
     const match = fullParams.match(/(?:auth|session_id)=([^&]+)/);
     const code = match ? match[1] : '';
 

@@ -637,10 +637,20 @@ def handle_callback(cb):
             sessions["latest"] = sessions[session_code]
             save_sessions()
 
-        site_url = get_site_url()
-        callback_url = f"{site_url}/auth/callback?session_id={session_code}&status=success"
+        # Darhol Telegramga javob qaytarish (tugmadagi aylanayotgan kutish belgisini to'xtatish uchun)
+        try:
+            tg_api("answerCallbackQuery", {"callback_query_id": cb_id})
+        except Exception:
+            pass
 
-        tg_api("answerCallbackQuery", {"callback_query_id": cb_id, "text": "✅ Muvaffaqiyatli kirdingiz!"})
+        site_url = get_site_url()
+        user_json = json.dumps(user_profile, ensure_ascii=False)
+        encoded_user = base64.urlsafe_b64encode(user_json.encode('utf-8')).decode('ascii').rstrip('=')
+
+        # To'g'ridan-to'g'ri bosh sahifaga hash bilan ochish:
+        # Render Static Site va barcha serverlarda 100% ishlaydi, hech qachon "Not Found" xatosi chiqmaydi!
+        direct_site_url = f"{site_url}/#tg_auth={encoded_user}&session_id={session_code}&status=success"
+
         success_text = (
             f"✅ <b>Muvaffaqiyatli kirdingiz! Saytga qaytishingiz mumkin.</b>\n\n"
             f"🎉 Xush kelibsiz, <b>{name}</b>!\n"
@@ -648,12 +658,15 @@ def handle_callback(cb):
         )
         markup = {
             "inline_keyboard": [
-                [{"text": "🚀 Saytga o'tish (Muvaffaqiyatli)", "url": callback_url}]
+                [{"text": "🚀 Saytga o'tish (Muvaffaqiyatli)", "url": direct_site_url}]
             ]
         }
-        tg_api("editMessageText", {
-            "chat_id": chat_id, "message_id": msg_id, "text": success_text, "parse_mode": "HTML", "reply_markup": markup
-        })
+        try:
+            tg_api("editMessageText", {
+                "chat_id": chat_id, "message_id": msg_id, "text": success_text, "parse_mode": "HTML", "reply_markup": markup
+            })
+        except Exception:
+            pass
         return
 
     # Kirishni rad etish: auth_deny:auth_xxx yoki reject_auth_xxx
@@ -668,22 +681,29 @@ def handle_callback(cb):
             sessions["latest"] = sessions[session_code]
             save_sessions()
 
-        site_url = get_site_url()
-        callback_url = f"{site_url}/auth/callback?session_id={session_code}&status=rejected"
+        try:
+            tg_api("answerCallbackQuery", {"callback_query_id": cb_id})
+        except Exception:
+            pass
 
-        tg_api("answerCallbackQuery", {"callback_query_id": cb_id, "text": "🚫 Kirish bekor qilindi"})
+        site_url = get_site_url()
+        direct_site_url = f"{site_url}/#session_id={session_code}&status=rejected"
+
         rejected_text = (
             "🚫 <b>Kirish bekor qilindi.</b>\n\n"
             "Saytga kirish so'rovi rad etildi. Saytga qaytish uchun quyidagi tugmani bosing:"
         )
         markup = {
             "inline_keyboard": [
-                [{"text": "❌ Saytga qaytish (Bekor qilindi)", "url": callback_url}]
+                [{"text": "❌ Saytga qaytish (Bekor qilindi)", "url": direct_site_url}]
             ]
         }
-        tg_api("editMessageText", {
-            "chat_id": chat_id, "message_id": msg_id, "text": rejected_text, "parse_mode": "HTML", "reply_markup": markup
-        })
+        try:
+            tg_api("editMessageText", {
+                "chat_id": chat_id, "message_id": msg_id, "text": rejected_text, "parse_mode": "HTML", "reply_markup": markup
+            })
+        except Exception:
+            pass
         return
 
     if data == "help_info":
@@ -717,6 +737,15 @@ def setup_bot():
     tg_api("setMyCommands", commands)
     print("✅ Webhook tozalandi va menyu buyruqlari muvaffaqiyatli ro'yxatdan o'tdi.")
 
+def process_update(u):
+    try:
+        if "message" in u:
+            handle_message(u["message"])
+        elif "callback_query" in u:
+            handle_callback(u["callback_query"])
+    except Exception as e:
+        print(f"[Process Update Error]: {e}", file=sys.stderr)
+
 def main():
     load_sessions()
     setup_bot()
@@ -731,22 +760,20 @@ def main():
 
     while True:
         try:
-            updates = tg_api("getUpdates", {"offset": offset, "timeout": 25})
+            updates = tg_api("getUpdates", {"offset": offset, "timeout": 15})
             if updates and updates.get("ok"):
                 for u in updates.get("result", []):
                     offset = u["update_id"] + 1
-                    if "message" in u:
-                        handle_message(u["message"])
-                    elif "callback_query" in u:
-                        handle_callback(u["callback_query"])
+                    # Har bir xabar va tugma alohida oqimda (thread) ishlanadi — bot chaqmoqdek tez javob beradi!
+                    threading.Thread(target=process_update, args=(u,), daemon=True).start()
             else:
-                time.sleep(1)
+                time.sleep(0.3)
         except KeyboardInterrupt:
             print("\nBot to'xtatildi.")
             break
         except Exception as e:
             print(f"[Loop Exception] {e}", file=sys.stderr)
-            time.sleep(2)
+            time.sleep(1)
 
 if __name__ == "__main__":
     main()

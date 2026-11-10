@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Writing Master AI — Yo'naltirilmoqda...</title>
+  <script>
+    (function() {
+      var params = new URLSearchParams(window.location.search);
+      var sessionId = params.get('session_id') || params.get('code') || '';
+      var status = params.get('status') || 'success';
+      var tgAuth = params.get('tg_auth') || '';
+      var hash = '#status=' + encodeURIComponent(status);
+      if (sessionId) hash += '&session_id=' + encodeURIComponent(sessionId);
+      if (tgAuth) hash += '&tg_auth=' + encodeURIComponent(tgAuth);
+      window.location.replace('/' + hash);
+    })();
+  </script>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; text-align: center;">
+  <div>
+    <h2 style="font-weight: 700; margin-bottom: 8px;">Writing Master AI</h2>
+    <p style="color: #94a3b8; font-size: 14px;">Saytga yo'naltirilmoqda, iltimos kuting...</p>
+  </div>
+</body>
+</html>
