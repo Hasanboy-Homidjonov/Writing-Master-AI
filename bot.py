@@ -444,79 +444,271 @@ def run_http_server(port=5000):
     except Exception as e:
         print(f"[HTTP Server Warning] Port {port} band bo'lishi mumkin: {e}", file=sys.stderr)
 
-# Telegram Bot Xabarlari va Tugmalari
-def get_main_menu_message(name):
+# Telegram Bot Xabarlari va Tugmalari (Ko'p tilli / Multilingual)
+user_languages = {}
+
+def get_user_lang(from_user):
+    user_id = str(from_user.get("id") or "")
+    if user_id and user_id in user_languages:
+        return user_languages[user_id]
+    
+    # Telegram klienti sozlamalaridagi til (language_code)
+    code = (from_user.get("language_code") or "").lower().strip()
+    if code.startswith("ru"):
+        return "ru"
+    if code.startswith("en"):
+        return "en"
+    return "uz"
+
+def get_user_display_name(from_user, lang="uz"):
+    first_name = (from_user.get("first_name") or "").strip()
+    last_name = (from_user.get("last_name") or "").strip()
+    full = " ".join(filter(None, [first_name, last_name])).strip()
+    if full:
+        return full
+    if from_user.get("username"):
+        return from_user.get("username")
+    if lang == "ru":
+        return "Пользователь"
+    if lang == "en":
+        return "User"
+    return "Foydalanuvchi"
+
+def get_main_menu_message(name, lang="uz"):
     site_url = get_site_url()
-    text = (
-        f"Assalomu alaykum, <b>{name}</b>! 👋\n\n"
-        f"🤖 <b>WriteMaster AI botiga xush kelibsiz!</b>\n"
-        f"Sizga qanday yordam bera olaman?\n\n"
-        f"🎯 <b>Quyidagi imkoniyatlardan foydalanishingiz mumkin:</b>\n"
-        f"• ✍️ <b>Inglizcha insho yozish:</b> Mavzular bo'yicha mustaqil insho yozish\n"
-        f"• 🧠 <b>5D Sun'iy Intellekt tahlili:</b> Xatolarni aniqlash va ball olish\n"
-        f"• 📊 <b>CEFR Darajasini oshirish:</b> A1 dan C1 gacha ko'tarilish\n"
-        f"• 🏆 <b>WriteCoin va Reyting:</b> Ballar yig'ib peshqadamlar safiga kirish\n\n"
-        f"🌐 <b>Saytga kirish uchun</b> quyidagi tugmani bosing yoki yordam bo'limini tanlang 👇"
-    )
-    markup = {
-        "inline_keyboard": [
-            [{"text": "🚀 Saytga kirish", "url": site_url}],
-            [
-                {"text": "📚 Qoidalar va Yordam (/help)", "callback_data": "help_info"},
-                {"text": "👨‍💻 Admin bilan bog'lanish (/admin)", "callback_data": "admin_info"}
+    if lang == "ru":
+        text = (
+            f"Здравствуйте, <b>{name}</b>! 👋\n\n"
+            f"🤖 <b>Добро пожаловать в бот WriteMaster AI!</b>\n"
+            f"Чем я могу вам помочь?\n\n"
+            f"🎯 <b>Вам доступны следующие возможности:</b>\n"
+            f"• ✍️ <b>Написание эссе на английском:</b> Практика по экзаменационным темам\n"
+            f"• 🧠 <b>5D AI Анализ:</b> Мгновенная проверка ошибок и начисление баллов\n"
+            f"• 📊 <b>Повышение уровня CEFR:</b> Продвижение от A1 до C1\n"
+            f"• 🏆 <b>WriteCoin и Рейтинг:</b> Набирайте баллы и поднимайтесь в топе\n\n"
+            f"🌐 <b>Чтобы войти на сайт</b>, нажмите кнопку ниже или выберите раздел помощи 👇"
+        )
+        markup = {
+            "inline_keyboard": [
+                [{"text": "🚀 Войти на сайт", "url": site_url}],
+                [
+                    {"text": "📚 Правила и Помощь (/help)", "callback_data": "help_info"},
+                    {"text": "👨‍💻 Связаться с админом (/admin)", "callback_data": "admin_info"}
+                ],
+                [{"text": "🌐 Сменить язык / Change language (/lang)", "callback_data": "lang_menu"}]
             ]
-        ]
-    }
+        }
+    elif lang == "en":
+        text = (
+            f"Hello, <b>{name}</b>! 👋\n\n"
+            f"🤖 <b>Welcome to WriteMaster AI Bot!</b>\n"
+            f"How can I help you today?\n\n"
+            f"🎯 <b>Explore our powerful features:</b>\n"
+            f"• ✍️ <b>English Essay Writing:</b> Practice on real exam topics\n"
+            f"• 🧠 <b>5D AI Assessment:</b> Instant grading and mistake analysis\n"
+            f"• 📊 <b>CEFR Level Progression:</b> Advance from A1 up to C1\n"
+            f"• 🏆 <b>WriteCoins & Leaderboard:</b> Earn coins and climb the ranks\n\n"
+            f"🌐 <b>To access the platform</b>, tap the button below or choose help 👇"
+        )
+        markup = {
+            "inline_keyboard": [
+                [{"text": "🚀 Open Website", "url": site_url}],
+                [
+                    {"text": "📚 Rules & Help (/help)", "callback_data": "help_info"},
+                    {"text": "👨‍💻 Contact Admin (/admin)", "callback_data": "admin_info"}
+                ],
+                [{"text": "🌐 Change language / Tilni o'zgartirish (/lang)", "callback_data": "lang_menu"}]
+            ]
+        }
+    else:
+        text = (
+            f"Assalomu alaykum, <b>{name}</b>! 👋\n\n"
+            f"🤖 <b>WriteMaster AI botiga xush kelibsiz!</b>\n"
+            f"Sizga qanday yordam bera olaman?\n\n"
+            f"🎯 <b>Quyidagi imkoniyatlardan foydalanishingiz mumkin:</b>\n"
+            f"• ✍️ <b>Inglizcha insho yozish:</b> Mavzular bo'yicha mustaqil insho yozish\n"
+            f"• 🧠 <b>5D Sun'iy Intellekt tahlili:</b> Xatolarni aniqlash va ball olish\n"
+            f"• 📊 <b>CEFR Darajasini oshirish:</b> A1 dan C1 gacha ko'tarilish\n"
+            f"• 🏆 <b>WriteCoin va Reyting:</b> Ballar yig'ib peshqadamlar safiga kirish\n\n"
+            f"🌐 <b>Saytga kirish uchun</b> quyidagi tugmani bosing yoki yordam bo'limini tanlang 👇"
+        )
+        markup = {
+            "inline_keyboard": [
+                [{"text": "🚀 Saytga kirish", "url": site_url}],
+                [
+                    {"text": "📚 Qoidalar va Yordam (/help)", "callback_data": "help_info"},
+                    {"text": "👨‍💻 Admin bilan bog'lanish (/admin)", "callback_data": "admin_info"}
+                ],
+                [{"text": "🌐 Tilni o'zgartirish / Language / Язык (/lang)", "callback_data": "lang_menu"}]
+            ]
+        }
     return text, markup
 
-def get_help_message():
+def get_help_message(lang="uz"):
     site_url = get_site_url()
-    text = (
-        "📚 <b>WriteMaster AI — To'liq Qoidalar va Yordam</b>\n\n"
-        "🟣 <b>1. 90% Qoidasi</b>\n"
-        "Har bir mavzu ketma-ket ochiladi. Keyingisiga o'tish uchun oldingi mavzuda kamida 90% (23/25 ball) to'plang.\n\n"
-        "🟢 <b>2. Nazorat ostidagi imtihon (Anti-Cheat)</b>\n"
-        "Imtihon faqat to'liq ekranda o'tadi. Oynani almashtirish, nusxalash yoki boshqa joydan matn qo'yish taqiqlangan — 3 ta ogohlantirish imtihonni bekor qiladi.\n\n"
-        "🔵 <b>3. CEFR Darajalari</b>\n"
-        "Yozishdan oldin darajangizni (A1–C1) tanlaysiz; imtihon boshlangach u qulflanadi.\n\n"
-        "🟡 <b>4. WriteCoinlar va Reyting</b>\n"
-        "Muvaffaqiyatli topshiriq uchun 50 coin, mukammal natija uchun qo'shimcha 100 coin beriladi.\n\n"
-        "🤖 <b>5. 5D AI Baholash Mezonlari:</b>\n"
-        "• <b>Task Achievement:</b> Vazifaning to'liq ochilganligi\n"
-        "• <b>Coherence & Cohesion:</b> Mantiq va jumlalar bog'liqligi\n"
-        "• <b>Lexical Resource:</b> Akademik va boy so'z boyligi\n"
-        "• <b>Grammatical Range:</b> Murakkab grammatik tuzilmalar\n"
-        "• <b>Accuracy:</b> Imlo, tinish belgilari va xatosiz yozish"
-    )
-    markup = {
-        "inline_keyboard": [
-            [{"text": "🚀 Saytga kirish", "url": site_url}],
-            [
-                {"text": "👨‍💻 Admin (/admin)", "callback_data": "admin_info"},
-                {"text": "🏠 Bosh menyu", "callback_data": "main_menu"}
+    if lang == "ru":
+        text = (
+            "📚 <b>WriteMaster AI — Правила и Помощь</b>\n\n"
+            "🟣 <b>1. Правило 90%</b>\n"
+            "Каждая тема открывается по очереди. Наберите не менее 90% (23/25 баллов) в предыдущей теме для перехода к следующей.\n\n"
+            "🟢 <b>2. Контролируемый экзамен (Anti-Cheat)</b>\n"
+            "Экзамен проходит в полноэкранном режиме. Переключение вкладок, копирование и вставка текста запрещены — 3 предупреждения отменяют попытку.\n\n"
+            "🔵 <b>3. Уровни CEFR</b>\n"
+            "Перед началом выберите свой уровень (A1–C1); во время экзамена он блокируется.\n\n"
+            "🟡 <b>4. WriteCoins и Рейтинг</b>\n"
+            "За выполнение эссе начисляется 50 монет, за максимальный балл — еще 100 монет.\n\n"
+            "🤖 <b>5. Критерии 5D AI Оценки:</b>\n"
+            "• <b>Task Achievement:</b> Полнота раскрытия темы\n"
+            "• <b>Coherence & Cohesion:</b> Логика и связность предложений\n"
+            "• <b>Lexical Resource:</b> Академический словарный запас\n"
+            "• <b>Grammatical Range:</b> Сложные грамматические конструкции\n"
+            "• <b>Accuracy:</b> Грамотность, правописание и пунктуация"
+        )
+        markup = {
+            "inline_keyboard": [
+                [{"text": "🚀 Войти на сайт", "url": site_url}],
+                [
+                    {"text": "👨‍💻 Админ (/admin)", "callback_data": "admin_info"},
+                    {"text": "🏠 Главное меню", "callback_data": "main_menu"}
+                ]
             ]
-        ]
-    }
+        }
+    elif lang == "en":
+        text = (
+            "📚 <b>WriteMaster AI — Rules & Help Guide</b>\n\n"
+            "🟣 <b>1. The 90% Rule</b>\n"
+            "Topics unlock sequentially. Score at least 90% (23/25 points) on the current topic to unlock the next.\n\n"
+            "🟢 <b>2. Proctored Exam (Anti-Cheat)</b>\n"
+            "Exams are conducted in full screen. Tab switching, copying, or pasting is prohibited — 3 warnings will cancel the attempt.\n\n"
+            "🔵 <b>3. CEFR Levels</b>\n"
+            "Select your target CEFR level (A1–C1) before starting; it locks once the exam begins.\n\n"
+            "🟡 <b>4. WriteCoins & Leaderboard</b>\n"
+            "Earn 50 coins for passing, and a 100 coin bonus for achieving a perfect score.\n\n"
+            "🤖 <b>5. 5D AI Evaluation Criteria:</b>\n"
+            "• <b>Task Achievement:</b> Fulfillment of the topic prompt\n"
+            "• <b>Coherence & Cohesion:</b> Logical organization and paragraphing\n"
+            "• <b>Lexical Resource:</b> Academic and diverse vocabulary\n"
+            "• <b>Grammatical Range:</b> Varied and complex sentence structures\n"
+            "• <b>Accuracy:</b> Spelling, punctuation, and grammar precision"
+        )
+        markup = {
+            "inline_keyboard": [
+                [{"text": "🚀 Open Website", "url": site_url}],
+                [
+                    {"text": "👨‍💻 Admin (/admin)", "callback_data": "admin_info"},
+                    {"text": "🏠 Main Menu", "callback_data": "main_menu"}
+                ]
+            ]
+        }
+    else:
+        text = (
+            "📚 <b>WriteMaster AI — To'liq Qoidalar va Yordam</b>\n\n"
+            "🟣 <b>1. 90% Qoidasi</b>\n"
+            "Har bir mavzu ketma-ket ochiladi. Keyingisiga o'tish uchun oldingi mavzuda kamida 90% (23/25 ball) to'plang.\n\n"
+            "🟢 <b>2. Nazorat ostidagi imtihon (Anti-Cheat)</b>\n"
+            "Imtihon faqat to'liq ekranda o'tadi. Oynani almashtirish, nusxalash yoki boshqa joydan matn qo'yish taqiqlangan — 3 ta ogohlantirish imtihonni bekor qiladi.\n\n"
+            "🔵 <b>3. CEFR Darajalari</b>\n"
+            "Yozishdan oldin darajangizni (A1–C1) tanlaysiz; imtihon boshlangach u qulflanadi.\n\n"
+            "🟡 <b>4. WriteCoinlar va Reyting</b>\n"
+            "Muvaffaqiyatli topshiriq uchun 50 coin, mukammal natija uchun qo'shimcha 100 coin beriladi.\n\n"
+            "🤖 <b>5. 5D AI Baholash Mezonlari:</b>\n"
+            "• <b>Task Achievement:</b> Vazifaning to'liq ochilganligi\n"
+            "• <b>Coherence & Cohesion:</b> Mantiq va jumlalar bog'liqligi\n"
+            "• <b>Lexical Resource:</b> Akademik va boy so'z boyligi\n"
+            "• <b>Grammatical Range:</b> Murakkab grammatik tuzilmalar\n"
+            "• <b>Accuracy:</b> Imlo, tinish belgilari va xatosiz yozish"
+        )
+        markup = {
+            "inline_keyboard": [
+                [{"text": "🚀 Saytga kirish", "url": site_url}],
+                [
+                    {"text": "👨‍💻 Admin (/admin)", "callback_data": "admin_info"},
+                    {"text": "🏠 Bosh menyu", "callback_data": "main_menu"}
+                ]
+            ]
+        }
     return text, markup
 
-def get_admin_message():
+def get_admin_message(lang="uz"):
     site_url = get_site_url()
-    text = (
-        "👨‍💻 <b>Admin va Dasturchi bilan bog'lanish</b>\n\n"
-        "• <b>Dasturchi:</b> Hasanboy Homidjonov\n"
-        "• <b>Asosiy Telegram:</b> @KhomidjonovH\n"
-        "• <b>Qo'shimcha Telegram:</b> @Khomidjonov_H\n\n"
-        "Savol, taklif yoki texnik muammo bo'lsa — quyidagi tugmalardan to'g'ridan-to'g'ri yozing.\n\n"
-        "© 2026 WriteMaster AI. Barcha huquqlar himoyalangan."
-    )
+    if lang == "ru":
+        text = (
+            "👨‍💻 <b>Связь с Администратором и Разработчиком</b>\n\n"
+            "• <b>Разработчик:</b> Hasanboy Homidjonov\n"
+            "• <b>Основной Telegram:</b> @KhomidjonovH\n"
+            "• <b>Дополнительный Telegram:</b> @Khomidjonov_H\n\n"
+            "Если у вас есть вопросы, предложения или проблемы — напишите нам напрямую по кнопкам ниже.\n\n"
+            "© 2026 WriteMaster AI. Все права защищены."
+        )
+        markup = {
+            "inline_keyboard": [
+                [{"text": "💬 Telegram: @KhomidjonovH", "url": "https://t.me/KhomidjonovH"}],
+                [{"text": "💬 Telegram: @Khomidjonov_H", "url": "https://t.me/Khomidjonov_H"}],
+                [
+                    {"text": "🚀 Войти на сайт", "url": site_url},
+                    {"text": "🏠 Главное меню", "callback_data": "main_menu"}
+                ]
+            ]
+        }
+    elif lang == "en":
+        text = (
+            "👨‍💻 <b>Contact Admin & Developer</b>\n\n"
+            "• <b>Developer:</b> Hasanboy Homidjonov\n"
+            "• <b>Primary Telegram:</b> @KhomidjonovH\n"
+            "• <b>Secondary Telegram:</b> @Khomidjonov_H\n\n"
+            "For inquiries, suggestions, or technical support — message directly using the buttons below.\n\n"
+            "© 2026 WriteMaster AI. All rights reserved."
+        )
+        markup = {
+            "inline_keyboard": [
+                [{"text": "💬 Telegram: @KhomidjonovH", "url": "https://t.me/KhomidjonovH"}],
+                [{"text": "💬 Telegram: @Khomidjonov_H", "url": "https://t.me/Khomidjonov_H"}],
+                [
+                    {"text": "🚀 Open Website", "url": site_url},
+                    {"text": "🏠 Main Menu", "callback_data": "main_menu"}
+                ]
+            ]
+        }
+    else:
+        text = (
+            "👨‍💻 <b>Admin va Dasturchi bilan bog'lanish</b>\n\n"
+            "• <b>Dasturchi:</b> Hasanboy Homidjonov\n"
+            "• <b>Asosiy Telegram:</b> @KhomidjonovH\n"
+            "• <b>Qo'shimcha Telegram:</b> @Khomidjonov_H\n\n"
+            "Savol, taklif yoki texnik muammo bo'lsa — quyidagi tugmalardan to'g'ridan-to'g'ri yozing.\n\n"
+            "© 2026 WriteMaster AI. Barcha huquqlar himoyalangan."
+        )
+        markup = {
+            "inline_keyboard": [
+                [{"text": "💬 Telegram: @KhomidjonovH", "url": "https://t.me/KhomidjonovH"}],
+                [{"text": "💬 Telegram: @Khomidjonov_H", "url": "https://t.me/Khomidjonov_H"}],
+                [
+                    {"text": "🚀 Saytga kirish", "url": site_url},
+                    {"text": "🏠 Bosh menyu", "callback_data": "main_menu"}
+                ]
+            ]
+        }
+    return text, markup
+
+def get_language_message(lang="uz"):
+    if lang == "ru":
+        text = "🌐 <b>Выберите предпочитаемый язык:</b>"
+        btn_back = "🏠 Главное меню"
+    elif lang == "en":
+        text = "🌐 <b>Choose your preferred language:</b>"
+        btn_back = "🏠 Main Menu"
+    else:
+        text = "🌐 <b>O'zingizga qulay tilni tanlang:</b>"
+        btn_back = "🏠 Bosh menyu"
+
     markup = {
         "inline_keyboard": [
-            [{"text": "💬 Telegram: @KhomidjonovH", "url": "https://t.me/KhomidjonovH"}],
-            [{"text": "💬 Telegram: @Khomidjonov_H", "url": "https://t.me/Khomidjonov_H"}],
             [
-                {"text": "🚀 Saytga kirish", "url": site_url},
-                {"text": "🏠 Bosh menyu", "callback_data": "main_menu"}
-            ]
+                {"text": "🇺🇿 O'zbekcha", "callback_data": "set_lang_uz"},
+                {"text": "🇷🇺 Русский", "callback_data": "set_lang_ru"},
+                {"text": "🇬🇧 English", "callback_data": "set_lang_en"}
+            ],
+            [{"text": btn_back, "callback_data": "main_menu"}]
         ]
     }
     return text, markup
@@ -525,25 +717,30 @@ def handle_message(msg):
     chat_id = msg.get("chat", {}).get("id")
     text = (msg.get("text") or "").strip()
     from_user = msg.get("from", {})
-    first_name = from_user.get("first_name") or ""
-    last_name = from_user.get("last_name") or ""
-    name = " ".join(filter(None, [first_name, last_name])) or from_user.get("username") or "Foydalanuvchi"
+    lang = get_user_lang(from_user)
+    name = get_user_display_name(from_user, lang)
 
-    print(f"📩 [{time.strftime('%H:%M:%S')}] Xabar keldi: {name}: {text}")
+    print(f"📩 [{time.strftime('%H:%M:%S')}] Xabar keldi: {name} (til: {lang}): {text}")
 
     # 1. /help
-    if text.startswith("/help") or "yordam" in text.lower():
-        msg_text, markup = get_help_message()
+    if text.startswith("/help") or "yordam" in text.lower() or "помощь" in text.lower() or text.lower() == "help":
+        msg_text, markup = get_help_message(lang)
         tg_api("sendMessage", {"chat_id": chat_id, "text": msg_text, "parse_mode": "HTML", "reply_markup": markup})
         return
 
     # 2. /admin
-    if text.startswith("/admin") or "admin" in text.lower():
-        msg_text, markup = get_admin_message()
+    if text.startswith("/admin") or "admin" in text.lower() or "админ" in text.lower():
+        msg_text, markup = get_admin_message(lang)
         tg_api("sendMessage", {"chat_id": chat_id, "text": msg_text, "parse_mode": "HTML", "reply_markup": markup})
         return
 
-    # 3. Saytdan dostup olib kirgan holat: /start auth_xxxx
+    # 3. /lang
+    if text.startswith("/lang") or text.startswith("/language") or "til" in text.lower() or "язык" in text.lower():
+        msg_text, markup = get_language_message(lang)
+        tg_api("sendMessage", {"chat_id": chat_id, "text": msg_text, "parse_mode": "HTML", "reply_markup": markup})
+        return
+
+    # 4. Saytdan dostup olib kirgan holat: /start auth_xxxx
     parts = text.split()
     auth_param = parts[1].strip() if len(parts) > 1 else ""
 
@@ -559,29 +756,65 @@ def handle_message(msg):
                 }
                 save_sessions()
 
-        prompt_text = (
-            f"🔐 <b>Writing Master platformasiga kirish so'rovi!</b>\n\n"
-            f"Assalomu alaykum, <b>{name}</b>!\n"
-            f"Saytga ushbu Telegram hisobingiz orqali kirishni tasdiqlaysizmi?"
-        )
-        markup = {
-            "inline_keyboard": [
-                [
-                    {"text": "✅ Ha, kirish", "callback_data": f"auth_allow:{session_code}"},
-                    {"text": "❌ Yo'q, bekor qilish", "callback_data": f"auth_deny:{session_code}"}
-                ],
-                [
-                    {"text": "📚 Yordam (/help)", "callback_data": "help_info"},
-                    {"text": "👨‍💻 Admin (/admin)", "callback_data": "admin_info"}
+        if lang == "ru":
+            prompt_text = (
+                f"🔐 <b>Запрос на вход в Writing Master!</b>\n\n"
+                f"Здравствуйте, <b>{name}</b>!\n"
+                f"Подтверждаете вход на сайт через этот Telegram аккаунт?"
+            )
+            markup = {
+                "inline_keyboard": [
+                    [
+                        {"text": "✅ Да, войти", "callback_data": f"auth_allow:{session_code}"},
+                        {"text": "❌ Отмена", "callback_data": f"auth_deny:{session_code}"}
+                    ],
+                    [
+                        {"text": "📚 Помощь (/help)", "callback_data": "help_info"},
+                        {"text": "👨‍💻 Админ (/admin)", "callback_data": "admin_info"}
+                    ]
                 ]
-            ]
-        }
+            }
+        elif lang == "en":
+            prompt_text = (
+                f"🔐 <b>Writing Master Login Request!</b>\n\n"
+                f"Hello, <b>{name}</b>!\n"
+                f"Do you confirm logging into the website using this Telegram account?"
+            )
+            markup = {
+                "inline_keyboard": [
+                    [
+                        {"text": "✅ Yes, Sign In", "callback_data": f"auth_allow:{session_code}"},
+                        {"text": "❌ No, Cancel", "callback_data": f"auth_deny:{session_code}"}
+                    ],
+                    [
+                        {"text": "📚 Help (/help)", "callback_data": "help_info"},
+                        {"text": "👨‍💻 Admin (/admin)", "callback_data": "admin_info"}
+                    ]
+                ]
+            }
+        else:
+            prompt_text = (
+                f"🔐 <b>Writing Master platformasiga kirish so'rovi!</b>\n\n"
+                f"Assalomu alaykum, <b>{name}</b>!\n"
+                f"Saytga ushbu Telegram hisobingiz orqali kirishni tasdiqlaysizmi?"
+            )
+            markup = {
+                "inline_keyboard": [
+                    [
+                        {"text": "✅ Ha, kirish", "callback_data": f"auth_allow:{session_code}"},
+                        {"text": "❌ Yo'q, bekor qilish", "callback_data": f"auth_deny:{session_code}"}
+                    ],
+                    [
+                        {"text": "📚 Yordam (/help)", "callback_data": "help_info"},
+                        {"text": "👨‍💻 Admin (/admin)", "callback_data": "admin_info"}
+                    ]
+                ]
+            }
         tg_api("sendMessage", {"chat_id": chat_id, "text": prompt_text, "parse_mode": "HTML", "reply_markup": markup})
         return
 
-    # 4. Botning o'zida turib /start bossa yoki boshqa xabar yozsa:
-    # "Assalomu alaykum, {name}! Sizga qanday yordam bera olaman?" deb chiqadi:
-    msg_text, markup = get_main_menu_message(name)
+    # 5. Botning o'zida turib /start bossa yoki boshqa xabar yozsa:
+    msg_text, markup = get_main_menu_message(name, lang)
     tg_api("sendMessage", {"chat_id": chat_id, "text": msg_text, "parse_mode": "HTML", "reply_markup": markup})
 
 def handle_callback(cb):
@@ -592,9 +825,8 @@ def handle_callback(cb):
     msg_id = msg.get("message_id")
     from_user = cb.get("from", {})
 
-    first_name = from_user.get("first_name") or ""
-    last_name = from_user.get("last_name") or ""
-    name = " ".join(filter(None, [first_name, last_name])) or from_user.get("username") or "Hasanboy Homidjonov"
+    lang = get_user_lang(from_user)
+    name = get_user_display_name(from_user, lang)
     username = from_user.get("username") or ""
 
     is_admin = (
@@ -602,7 +834,7 @@ def handle_callback(cb):
         or from_user.get("id") == 7034211289
     )
 
-    print(f"🔘 [{time.strftime('%H:%M:%S')}] Tugma bosildi: {name}: {data}")
+    print(f"🔘 [{time.strftime('%H:%M:%S')}] Tugma bosildi: {name} (til: {lang}): {data}")
 
     # Muvaffaqiyatli kirish: auth_allow:auth_xxx yoki confirm_auth_xxx
     if data.startswith("auth_allow:") or data.startswith("confirm_"):
@@ -648,17 +880,33 @@ def handle_callback(cb):
         encoded_user = base64.urlsafe_b64encode(user_json.encode('utf-8')).decode('ascii').rstrip('=')
 
         # To'g'ridan-to'g'ri bosh sahifaga hash bilan ochish:
-        # Render Static Site va barcha serverlarda 100% ishlaydi, hech qachon "Not Found" xatosi chiqmaydi!
         direct_site_url = f"{site_url}/#tg_auth={encoded_user}&session_id={session_code}&status=success"
 
-        success_text = (
-            f"✅ <b>Muvaffaqiyatli kirdingiz! Saytga qaytishingiz mumkin.</b>\n\n"
-            f"🎉 Xush kelibsiz, <b>{name}</b>!\n"
-            f"Profilingiz faollashtirildi. Saytga o'tish uchun quyidagi tugmani bosing:"
-        )
+        if lang == "ru":
+            success_text = (
+                f"✅ <b>Вход успешно выполнен! Можете вернуться на сайт.</b>\n\n"
+                f"🎉 Добро пожаловать, <b>{name}</b>!\n"
+                f"Ваш профиль активирован. Нажмите кнопку ниже для перехода на сайт:"
+            )
+            btn_text = "🚀 Перейти на сайт (Успешно)"
+        elif lang == "en":
+            success_text = (
+                f"✅ <b>Signed in successfully! You may return to the website.</b>\n\n"
+                f"🎉 Welcome, <b>{name}</b>!\n"
+                f"Your profile is active. Tap the button below to open the website:"
+            )
+            btn_text = "🚀 Go to Website (Success)"
+        else:
+            success_text = (
+                f"✅ <b>Muvaffaqiyatli kirdingiz! Saytga qaytishingiz mumkin.</b>\n\n"
+                f"🎉 Xush kelibsiz, <b>{name}</b>!\n"
+                f"Profilingiz faollashtirildi. Saytga o'tish uchun quyidagi tugmani bosing:"
+            )
+            btn_text = "🚀 Saytga o'tish (Muvaffaqiyatli)"
+
         markup = {
             "inline_keyboard": [
-                [{"text": "🚀 Saytga o'tish (Muvaffaqiyatli)", "url": direct_site_url}]
+                [{"text": btn_text, "url": direct_site_url}]
             ]
         }
         try:
@@ -689,13 +937,28 @@ def handle_callback(cb):
         site_url = get_site_url()
         direct_site_url = f"{site_url}/#session_id={session_code}&status=rejected"
 
-        rejected_text = (
-            "🚫 <b>Kirish bekor qilindi.</b>\n\n"
-            "Saytga kirish so'rovi rad etildi. Saytga qaytish uchun quyidagi tugmani bosing:"
-        )
+        if lang == "ru":
+            rejected_text = (
+                "🚫 <b>Вход отменён.</b>\n\n"
+                "Запрос на вход в систему был отклонён. Чтобы вернуться на сайт, нажмите кнопку ниже:"
+            )
+            btn_text = "❌ Вернуться на сайт (Отменено)"
+        elif lang == "en":
+            rejected_text = (
+                "🚫 <b>Login cancelled.</b>\n\n"
+                "The login request was rejected. Click below to return to the site:"
+            )
+            btn_text = "❌ Return to Website (Cancelled)"
+        else:
+            rejected_text = (
+                "🚫 <b>Kirish bekor qilindi.</b>\n\n"
+                "Saytga kirish so'rovi rad etildi. Saytga qaytish uchun quyidagi tugmani bosing:"
+            )
+            btn_text = "❌ Saytga qaytish (Bekor qilindi)"
+
         markup = {
             "inline_keyboard": [
-                [{"text": "❌ Saytga qaytish (Bekor qilindi)", "url": direct_site_url}]
+                [{"text": btn_text, "url": direct_site_url}]
             ]
         }
         try:
@@ -708,34 +971,78 @@ def handle_callback(cb):
 
     if data == "help_info":
         tg_api("answerCallbackQuery", {"callback_query_id": cb_id})
-        msg_text, markup = get_help_message()
+        msg_text, markup = get_help_message(lang)
         tg_api("sendMessage", {"chat_id": chat_id, "text": msg_text, "parse_mode": "HTML", "reply_markup": markup})
         return
 
     if data == "admin_info":
         tg_api("answerCallbackQuery", {"callback_query_id": cb_id})
-        msg_text, markup = get_admin_message()
+        msg_text, markup = get_admin_message(lang)
         tg_api("sendMessage", {"chat_id": chat_id, "text": msg_text, "parse_mode": "HTML", "reply_markup": markup})
         return
 
     if data == "main_menu":
         tg_api("answerCallbackQuery", {"callback_query_id": cb_id})
-        msg_text, markup = get_main_menu_message(name)
+        msg_text, markup = get_main_menu_message(name, lang)
         tg_api("sendMessage", {"chat_id": chat_id, "text": msg_text, "parse_mode": "HTML", "reply_markup": markup})
+        return
+
+    if data == "lang_menu":
+        tg_api("answerCallbackQuery", {"callback_query_id": cb_id})
+        msg_text, markup = get_language_message(lang)
+        tg_api("sendMessage", {"chat_id": chat_id, "text": msg_text, "parse_mode": "HTML", "reply_markup": markup})
+        return
+
+    if data.startswith("set_lang_"):
+        new_lang = data.replace("set_lang_", "")
+        user_id = str(from_user.get("id") or "")
+        if user_id:
+            user_languages[user_id] = new_lang
+        ack_text = "✅ Til tanlandi!" if new_lang == "uz" else ("✅ Язык выбран!" if new_lang == "ru" else "✅ Language set!")
+        tg_api("answerCallbackQuery", {"callback_query_id": cb_id, "text": ack_text})
+        msg_text, markup = get_main_menu_message(name, new_lang)
+        try:
+            tg_api("editMessageText", {
+                "chat_id": chat_id, "message_id": msg_id, "text": msg_text, "parse_mode": "HTML", "reply_markup": markup
+            })
+        except Exception:
+            tg_api("sendMessage", {"chat_id": chat_id, "text": msg_text, "parse_mode": "HTML", "reply_markup": markup})
         return
 
 def setup_bot():
     print(f"🤖 Telegram Bot sozlanmoqda: @{BOT_USERNAME}...")
     tg_api("deleteWebhook")
-    commands = {
+    
+    # Standart menyu (O'zbekcha)
+    tg_api("setMyCommands", {
         "commands": [
-            {"command": "start", "description": "🏠 Asosiy menyu va yordam"},
+            {"command": "start", "description": "🏠 Asosiy menyu va salomlashish"},
             {"command": "help", "description": "📚 Qoidalar va to'liq yordam"},
-            {"command": "admin", "description": "👨‍💻 Admin va dasturchi bilan bog'lanish"}
+            {"command": "admin", "description": "👨‍💻 Admin va dasturchi bilan bog'lanish"},
+            {"command": "lang", "description": "🌐 Tilni o'zgartirish (Til / Language / Язык)"}
         ]
-    }
-    tg_api("setMyCommands", commands)
-    print("✅ Webhook tozalandi va menyu buyruqlari muvaffaqiyatli ro'yxatdan o'tdi.")
+    })
+    # Ruscha menyu
+    tg_api("setMyCommands", {
+        "commands": [
+            {"command": "start", "description": "🏠 Главное меню"},
+            {"command": "help", "description": "📚 Правила и помощь"},
+            {"command": "admin", "description": "👨‍💻 Связь с разработчиком"},
+            {"command": "lang", "description": "🌐 Сменить язык (Language / Язык)"}
+        ],
+        "language_code": "ru"
+    })
+    # Inglizcha menyu
+    tg_api("setMyCommands", {
+        "commands": [
+            {"command": "start", "description": "🏠 Main menu"},
+            {"command": "help", "description": "📚 Rules & Help guide"},
+            {"command": "admin", "description": "👨‍💻 Contact developer & admin"},
+            {"command": "lang", "description": "🌐 Change language"}
+        ],
+        "language_code": "en"
+    })
+    print("✅ Webhook tozalandi va ko'p tilli menyu buyruqlari muvaffaqiyatli ro'yxatdan o'tdi.")
 
 def process_update(u):
     try:

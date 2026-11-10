@@ -222,6 +222,22 @@ export async function startTelegramBotPolling() {
   return;
 }
 
+function getUserLang(from) {
+  const code = (from?.language_code || '').toLowerCase().trim();
+  if (code.startsWith('ru')) return 'ru';
+  if (code.startsWith('en')) return 'en';
+  return 'uz';
+}
+
+function getUserDisplayName(from, lang = 'uz') {
+  const name = [from?.first_name, from?.last_name].filter(Boolean).join(' ').trim();
+  if (name) return name;
+  if (from?.username) return from.username;
+  if (lang === 'ru') return 'Пользователь';
+  if (lang === 'en') return 'User';
+  return 'Foydalanuvchi';
+}
+
 async function handleUpdate(update) {
   try {
     // 1. User sent a Message
@@ -230,7 +246,8 @@ async function handleUpdate(update) {
       const text = (msg.text || '').trim();
       const chatId = msg.chat.id;
       const from = msg.from;
-      const name = [from.first_name, from.last_name].filter(Boolean).join(' ') || from.username || 'Hasanboy';
+      const lang = getUserLang(from);
+      const name = getUserDisplayName(from, lang);
 
       // 1.1 /start command
       if (text.startsWith('/start')) {
@@ -239,7 +256,6 @@ async function handleUpdate(update) {
 
         // If user arrived with an Auth Code (/start auth_xxxx)
         if (param.startsWith('auth_')) {
-          // ALWAYS ACCEPT IT! Never say "eskirgan yoki topilmadi"
           if (!activeSessions.has(param)) {
             activeSessions.set(param, {
               code: param,
@@ -251,15 +267,29 @@ async function handleUpdate(update) {
             saveSessions(activeSessions);
           }
 
+          let promptText = `🔐 <b>Writing Master platformasiga kirish so'rovi!</b>\n\nAssalomu alaykum, <b>${name}</b>!\nSaytga ushbu Telegram hisobingiz orqali kirishni tasdiqlaysizmi?`;
+          let allowBtn = '✅ Ha, kirish';
+          let denyBtn = "❌ Yo'q, bekor qilish";
+
+          if (lang === 'ru') {
+            promptText = `🔐 <b>Запрос на вход в Writing Master!</b>\n\nЗдравствуйте, <b>${name}</b>!\nПодтверждаете вход на сайт через этот Telegram аккаунт?`;
+            allowBtn = '✅ Да, войти';
+            denyBtn = '❌ Отмена';
+          } else if (lang === 'en') {
+            promptText = `🔐 <b>Writing Master Login Request!</b>\n\nHello, <b>{name}</b>!\nDo you confirm logging into the website using this Telegram account?`;
+            allowBtn = '✅ Yes, Sign In';
+            denyBtn = '❌ No, Cancel';
+          }
+
           await tgApi('sendMessage', {
             chat_id: chatId,
-            text: `🔐 <b>Writing Master platformasiga kirish so'rovi!</b>\n\nAssalomu alaykum, <b>${name}</b>!\nSaytga ushbu Telegram hisobingiz orqali kirishni tasdiqlaysizmi?`,
+            text: promptText,
             parse_mode: 'HTML',
             reply_markup: {
               inline_keyboard: [
                 [
-                  { text: '✅ Ha, kiraman', callback_data: `confirm_${param}` },
-                  { text: '❌ Yo\'q, bekor qilish', callback_data: `reject_${param}` }
+                  { text: allowBtn, callback_data: `confirm_${param}` },
+                  { text: denyBtn, callback_data: `reject_${param}` }
                 ]
               ]
             }
@@ -267,17 +297,34 @@ async function handleUpdate(update) {
           return;
         }
 
-        // Normal /start message (No auth param)
+        // Normal /start message
+        let greeting = `Assalomu alaykum, <b>${name}</b>! 👋\n\n🎨 <b>WriteMaster AI</b> — ingliz tilida yozishni bosqichma-bosqich o'zlashtirish platformasi.\n\n✍️ Har bir mavzu uchun sun'iy intellekt 5 mezon bo'yicha baho beradi.\n🏆 90% dan yuqori ball — keyingi mavzu ochiladi.\n🪙 To'plangan WriteCoinlar reytingda o'rningizni belgilaydi.\n\nBoshlash uchun quyidagi tugmani bosing 👇`;
+        let openBtn = '🚀 Saytga kirish';
+        let helpBtn = '📚 Yordam';
+        let adminBtn = "👨‍💻 Admin bilan bog'lanish";
+
+        if (lang === 'ru') {
+          greeting = `Здравствуйте, <b>${name}</b>! 👋\n\n🎨 <b>WriteMaster AI</b> — платформа для пошагового освоения письма на английском языке.\n\n✍️ ИИ оценивает каждое эссе по 5 критериям.\n🏆 Более 90% — открывается следующая тема.\n🪙 Баллы WriteCoins определяют ваше место в рейтинге.\n\nНажмите кнопку ниже, чтобы начать 👇`;
+          openBtn = '🚀 Войти на сайт';
+          helpBtn = '📚 Помощь';
+          adminBtn = '👨‍💻 Связаться с админом';
+        } else if (lang === 'en') {
+          greeting = `Hello, <b>${name}</b>! 👋\n\n🎨 <b>WriteMaster AI</b> — master English writing step-by-step with AI guidance.\n\n✍️ AI evaluates your essays on 5 key exam criteria.\n🏆 Score 90%+ to unlock the next level topic.\n🪙 Earn WriteCoins and climb the global ranking.\n\nTap the button below to get started 👇`;
+          openBtn = '🚀 Open Website';
+          helpBtn = '📚 Rules & Help';
+          adminBtn = '👨‍💻 Contact Admin';
+        }
+
         await tgApi('sendMessage', {
           chat_id: chatId,
-          text: `Assalomu alaykum, <b>${name}</b>! 👋\n\n🎨 <b>WriteMaster AI</b> — ingliz tilida yozishni bosqichma-bosqich o'zlashtirish platformasi.\n\n✍️ Har bir mavzu uchun sun'iy intellekt 5 mezon bo'yicha baho beradi.\n🏆 90% dan yuqori ball — keyingi mavzu ochiladi.\n🪙 To'plangan WriteCoinlar reytingda o'rningizni belgilaydi.\n\nBoshlash uchun quyidagi tugmani bosing 👇`,
+          text: greeting,
           parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [
-              [{ text: '🚀 Saytga kirish', url: SITE_URL }],
+              [{ text: openBtn, url: SITE_URL }],
               [
-                { text: '📚 Yordam', callback_data: 'help_menu' },
-                { text: "👨‍💻 Admin bilan bog'lanish", callback_data: 'admin_contact' }
+                { text: helpBtn, callback_data: 'help_menu' },
+                { text: adminBtn, callback_data: 'admin_contact' }
               ]
             ]
           }

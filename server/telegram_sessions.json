@@ -52,25 +52,25 @@
     "confirmedAt": 1794188501.9561355
   },
   "latest": {
-    "code": "auth_wc4umpr",
+    "code": "auth_dxfrbr8",
     "status": "confirmed",
     "user": {
-      "id": "usr_tg_7744395518",
-      "telegramId": 7744395518,
-      "telegramUsername": "",
+      "id": "usr_tg_7034211289",
+      "telegramId": 7034211289,
+      "telegramUsername": "KhomidjonovH",
       "name": "Hasanboy",
-      "email": "tg_7744395518@writingmaster.app",
+      "email": "khomidjonovh@telegram.user",
       "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
-      "level": "B1",
-      "coins": 150,
-      "completedEssays": 0,
-      "streakDays": 1,
-      "rank": 12,
-      "role": "user",
+      "level": "C1",
+      "coins": 2500,
+      "completedEssays": 40,
+      "streakDays": 14,
+      "rank": 1,
+      "role": "admin",
       "joinedAt": "2026-11-10",
       "isAuthenticated": true
     },
-    "confirmedAt": 1794270108.2000012
+    "confirmedAt": 1794271517.9769998
   },
   "auth_rmmzhiwu": {
     "code": "auth_rmmzhiwu",
@@ -5657,5 +5657,47 @@
       "isAuthenticated": true
     },
     "confirmedAt": 1794270108.2000012
+  },
+  "auth_5279vt4": {
+    "code": "auth_5279vt4",
+    "status": "confirmed",
+    "user": {
+      "id": "usr_tg_7034211289",
+      "telegramId": 7034211289,
+      "telegramUsername": "KhomidjonovH",
+      "name": "Hasanboy",
+      "email": "khomidjonovh@telegram.user",
+      "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
+      "level": "C1",
+      "coins": 2500,
+      "completedEssays": 40,
+      "streakDays": 14,
+      "rank": 1,
+      "role": "admin",
+      "joinedAt": "2026-11-10",
+      "isAuthenticated": true
+    },
+    "confirmedAt": 1794271302.0191808
+  },
+  "auth_dxfrbr8": {
+    "code": "auth_dxfrbr8",
+    "status": "confirmed",
+    "user": {
+      "id": "usr_tg_7034211289",
+      "telegramId": 7034211289,
+      "telegramUsername": "KhomidjonovH",
+      "name": "Hasanboy",
+      "email": "khomidjonovh@telegram.user",
+      "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Hasanboy",
+      "level": "C1",
+      "coins": 2500,
+      "completedEssays": 40,
+      "streakDays": 14,
+      "rank": 1,
+      "role": "admin",
+      "joinedAt": "2026-11-10",
+      "isAuthenticated": true
+    },
+    "confirmedAt": 1794271517.9769998
   }
 }
