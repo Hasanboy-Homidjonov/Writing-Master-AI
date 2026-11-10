@@ -505,14 +505,14 @@ def get_admin_message():
         "👨‍💻 <b>Admin va Dasturchi bilan bog'lanish</b>\n\n"
         "• <b>Dasturchi:</b> Hasanboy Homidjonov\n"
         "• <b>Asosiy Telegram:</b> @KhomidjonovH\n"
-        "• <b>Aloqa Boti:</b> @Khomidjonov_H\n\n"
+        "• <b>Qo'shimcha Telegram:</b> @Khomidjonov_H\n\n"
         "Savol, taklif yoki texnik muammo bo'lsa — quyidagi tugmalardan to'g'ridan-to'g'ri yozing.\n\n"
         "© 2026 WriteMaster AI. Barcha huquqlar himoyalangan."
     )
     markup = {
         "inline_keyboard": [
             [{"text": "💬 Telegram: @KhomidjonovH", "url": "https://t.me/KhomidjonovH"}],
-            [{"text": "🤖 Aloqa Boti: @Khomidjonov_H", "url": "https://t.me/Khomidjonov_H"}],
+            [{"text": "💬 Telegram: @Khomidjonov_H", "url": "https://t.me/Khomidjonov_H"}],
             [
                 {"text": "🚀 Saytga kirish", "url": site_url},
                 {"text": "🏠 Bosh menyu", "callback_data": "main_menu"}

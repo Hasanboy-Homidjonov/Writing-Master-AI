@@ -317,15 +317,15 @@ async function handleUpdate(update) {
           chat_id: chatId,
           text: `👨‍💻 <b>Admin va Dasturchi bilan bog'lanish</b>\n\n` +
             `• <b>Dasturchi:</b> Hasanboy Homidjonov\n` +
-            `• <b>Telegram:</b> @KhomidjonovH\n` +
-            `• <b>Aloqa Boti:</b> @Khomidjonov_H\n\n` +
+            `• <b>Asosiy Telegram:</b> @KhomidjonovH\n` +
+            `• <b>Qo'shimcha Telegram:</b> @Khomidjonov_H\n\n` +
             `Savol, taklif yoki texnik muammo bo'lsa — quyidagi tugmalardan to'g'ridan-to'g'ri yozing.\n\n` +
             `© 2026 WriteMaster AI. Barcha huquqlar himoyalangan.`,
           parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [
               [{ text: '💬 Telegram: @KhomidjonovH', url: 'https://t.me/KhomidjonovH' }],
-              [{ text: '🤖 Aloqa Boti: @Khomidjonov_H', url: 'https://t.me/Khomidjonov_H' }],
+              [{ text: '💬 Telegram: @Khomidjonov_H', url: 'https://t.me/Khomidjonov_H' }],
               [{ text: '🚀 Saytga kirish', url: SITE_URL }]
             ]
           }
@@ -476,12 +476,12 @@ async function handleUpdate(update) {
         await tgApi('answerCallbackQuery', { callback_query_id: cb.id });
         await tgApi('sendMessage', {
           chat_id: chatId,
-          text: `👨‍💻 <b>Admin bilan bog'lanish</b>\n\n• <b>Dasturchi:</b> Hasanboy Homidjonov\n• <b>Telegram:</b> @KhomidjonovH\n• <b>Aloqa Boti:</b> @Khomidjonov_H\n\nSavol, taklif yoki muammo bo'lsa — quyidagi tugmalardan yozing.\n\n© 2026 WriteMaster AI. Barcha huquqlar himoyalangan.`,
+          text: `👨‍💻 <b>Admin bilan bog'lanish</b>\n\n• <b>Dasturchi:</b> Hasanboy Homidjonov\n• <b>Asosiy Telegram:</b> @KhomidjonovH\n• <b>Qo'shimcha Telegram:</b> @Khomidjonov_H\n\nSavol, taklif yoki muammo bo'lsa — quyidagi tugmalardan yozing.\n\n© 2026 WriteMaster AI. Barcha huquqlar himoyalangan.`,
           parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [
               [{ text: '💬 Telegram: @KhomidjonovH', url: 'https://t.me/KhomidjonovH' }],
-              [{ text: '🤖 Aloqa Boti: @Khomidjonov_H', url: 'https://t.me/Khomidjonov_H' }],
+              [{ text: '💬 Telegram: @Khomidjonov_H', url: 'https://t.me/Khomidjonov_H' }],
               [{ text: '⬅️ Orqaga', callback_data: 'back_main' }]
             ]
           }
