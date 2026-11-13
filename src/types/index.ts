@@ -59,6 +59,12 @@ export interface SecurityStrikeLog {
   timestamp: string;
 }
 
+export interface CriterionGuidelineItem {
+  rule: string;
+  explanation: string;
+  example?: string;
+}
+
 export interface CriterionFeedback {
   name: 'Task Achievement' | 'Organization' | 'Grammar' | 'Vocabulary' | 'Structure';
   score: number; // 1 to 5
@@ -68,6 +74,7 @@ export interface CriterionFeedback {
   summary: string;
   specificErrors?: string[];
   suggestions: string[];
+  guidelines?: CriterionGuidelineItem[];
   examples?: {
     original: string;
     correction: string;
@@ -75,9 +82,30 @@ export interface CriterionFeedback {
   }[];
 }
 
+export interface ModelSampleEssay {
+  title: string;
+  bandScore: string;
+  wordCount: number;
+  paragraphs: {
+    heading: string;
+    text: string;
+  }[];
+  fullText: string;
+  keyVocabulary: {
+    term: string;
+    meaning: string;
+    exampleInEssay: string;
+  }[];
+  whyItIs100Percent: {
+    criterion: string;
+    reason: string;
+  }[];
+}
+
 export interface EvaluationResultData {
   id: string;
   topicTitle: string;
+  topicPrompt?: string;
   essayText: string;
   wordCount: number;
   targetWordCount: { min: number; max: number };
@@ -92,6 +120,7 @@ export interface EvaluationResultData {
     vocabulary: CriterionFeedback;
     structure: CriterionFeedback;
   };
+  sampleEssay?: ModelSampleEssay;
   timestamp: string;
 }
 

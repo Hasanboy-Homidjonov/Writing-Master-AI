@@ -1,4 +1,5 @@
 import { CEFRLevel, EvaluationResultData, WritingTopic } from '../types';
+import { generateModelEssay } from './sampleEssayGenerator';
 
 // Common spelling errors dictionary
 const COMMON_MISSPELLINGS: Record<string, string> = {
@@ -322,6 +323,7 @@ export function analyzeEssay(
     overallScore,
     cefrLevel,
     coinsEarned: coins,
+    topicPrompt: topic.prompt,
     criteria: {
       taskAchievement: {
         name: 'Task Achievement',
@@ -334,6 +336,23 @@ export function analyzeEssay(
           `Ensure you write between ${targetMin} and ${targetMax} words.`,
           'Check that every guiding question from the prompt is explicitly answered.',
           'Support every general claim with a specific example or explanation.'
+        ],
+        guidelines: [
+          {
+            rule: "Savolning barcha shartlarini to'liq ochib berish",
+            explanation: "Mavzuda keltirilgan har bir savolga (guiding question) shoshilmasdan, asosli va to'liq javob yozing. Hech bir jihat e'tibordan chetda qolmasligi shart.",
+            example: "Agar mavzuda afzallik va kamchiliklar so'ralsa, ikkala tomonni ham muvozanatli yoritib, o'z aniq xulosangizni bildiring."
+          },
+          {
+            rule: "So'zlar soni talabiga qat'iy rioya qilish",
+            explanation: `Belgilangan minimal chegaradan (${targetMin} so'z) kam yozmang. Optimal diapazon: ${targetMin} - ${targetMax} ta so'z.`,
+            example: "So'zlar soni yetarli bo'lmaganda, inshoning boshqa jihatlari a'lo bo'lsa ham yakuniy ball cheklanadi."
+          },
+          {
+            rule: "Har bir fikrni aniq misol (illustration) bilan quvvatlash",
+            explanation: "Quruq gaplardan qochib, 'For instance', 'A prime example of this is' kabi jumlalar yordamida hayotiy yoki ilmiy dalil keltiring.",
+            example: "'Social media improves communication. For instance, international students can instantly connect with their families.'"
+          }
         ]
       },
       organization: {
@@ -347,6 +366,23 @@ export function analyzeEssay(
           'Use clear 3-4 paragraph layout: Introduction, Body Paragraphs, and Conclusion.',
           'Start each body paragraph with a clear topic sentence.',
           'Ensure the conclusion summarizes your main points without introducing new arguments.'
+        ],
+        guidelines: [
+          {
+            rule: "4 Paragrafli oltin struktura qoidasi",
+            explanation: "Inshoni mantiqiy bloklarga ajrating: 1. Kirish (Paraphrase + Thesis) • 2. 1-Asosiy paragraf • 3. 2-Asosiy paragraf • 4. Xulosa.",
+            example: "Matnni hech qachon bitta yaxlit (single block) holida yozmang. Paragraflar orasida 1 qator bo'sh joy qoldiring."
+          },
+          {
+            rule: "Mavzu jumlasi (Topic Sentence) bilan boshlash",
+            explanation: "Har bir asosiy paragrafning ilk gapi ushbu qism nima haqida ekanini darhol ko'rsatishi lozim.",
+            example: "'The most notable advantage of online education is its unparalleled scheduling flexibility.'"
+          },
+          {
+            rule: "Paragraflar va gaplar orasida bog'lovchilar zanjiri",
+            explanation: "Fikrlar uzilib qolmasligi uchun akademik o'tish so'zlaridan unumli foydalaning.",
+            example: "'Firstly', 'Furthermore', 'On the other hand', 'Consequently', 'To summarize'."
+          }
         ]
       },
       grammar: {
@@ -362,6 +398,23 @@ export function analyzeEssay(
           'Check irregular past tense forms.',
           'Avoid double comparatives (say "better", not "more better").'
         ],
+        guidelines: [
+          {
+            rule: "Zamonlar uyg'unligi va izchilligi (Tense Consistency)",
+            explanation: "Umumiy haqiqatlar uchun Present Simple, o'tmishdagi voqealar uchun Past Simple ishlatiladi. Bitta gap ichida asossiz zamon o'zgartirmang.",
+            example: "'He studied hard and passed the exam' (To'g'ri) • 'He studied hard and passes the exam' (Xato)."
+          },
+          {
+            rule: "Murakkab gap turlaridan foydalanish (Complex & Compound)",
+            explanation: "Faqat oddiy gaplar bilan chegaralanmay, 'Although', 'Whereas', 'Since', 'Because' bilan qo'shma gaplar yasang.",
+            example: "'Although technology accelerates efficiency, overdependence on automation may undermine critical thinking.'"
+          },
+          {
+            rule: "Ega va kesimning son jihatdan mosligi (Subject-Verb Agreement)",
+            explanation: "Birlikdagi ega bilan birlikdagi fe'l, ko'plikdagi ega bilan ko'plikdagi fe'l mos kelishi shart.",
+            example: "'The group of scientists has published...' ('have' emas). 'Everybody knows...' ('know' emas)."
+          }
+        ],
         examples: grammarErrors
       },
       vocabulary: {
@@ -376,6 +429,23 @@ export function analyzeEssay(
           'Replace frequently repeated words with contextually appropriate synonyms.',
           'Double check spellings of common academic words.',
           'Use topic-specific collocations and idioms where appropriate.'
+        ],
+        guidelines: [
+          {
+            rule: "So'z takroridan qochish va akademik sinonimlar qo'llash",
+            explanation: "Bitta so'zni (masalan, 'important', 'good', 'bad') qayta-qayta ishlatmang. Ularning o'rniga sinonimlardan foydalaning.",
+            example: "'important' -> 'crucial', 'vital', 'imperative' • 'problem' -> 'obstacle', 'predicament', 'dilemma'."
+          },
+          {
+            rule: "Turg'un so'z birikmalari (Collocations)",
+            explanation: "Ingliz tilida tabiiy yangraydigan so'z juftliklaridan foydalanish ballni darhol 7.0 - 9.0 oralig'iga ko'taradi.",
+            example: "'play an indispensable role', 'exert a profound influence', 'pose a grave threat', 'raise awareness'."
+          },
+          {
+            rule: "Imlo (Spelling) xatolarini tekshirish",
+            explanation: "Yozib bo'lgach, ko'p yanglishiladigan so'zlarni qayta tekshirib chiqing.",
+            example: "'government' (n harfi bor), 'environment', 'definitely', 'successful', 'necessary'."
+          }
         ]
       },
       structure: {
@@ -389,9 +459,27 @@ export function analyzeEssay(
           'Incorporate formal transition words like "Furthermore", "However", and "Consequently".',
           'Combine simple sentences using relative clauses (which, who, that).',
           'Vary sentence lengths to create a dynamic, engaging rhythm.'
+        ],
+        guidelines: [
+          {
+            rule: "Gap uzunligi va ohangi balansi (Sentence Variety)",
+            explanation: "Qisqa urg'uli gaplar (10-14 so'z) va murakkab kengaytirilgan gaplar (20-26 so'z) uyg'unligi inshoni ifodali qiladi.",
+            example: "Hamma gap bir xil uzunlikda bo'lsa, insho zerikarli va mexanik ko'rinadi."
+          },
+          {
+            rule: "Punktuatsiya va tinish belgilari intizomi",
+            explanation: "Kirish so'zlari ('However,', 'Therefore,', 'In contrast,') dan keyin har doim vergul qo'yilishi shart.",
+            example: "'Consequently, governments must allocate sufficient funds to public healthcare.'"
+          },
+          {
+            rule: "Akademik uslub: Qisqartmalardan voz kechish",
+            explanation: "Rasmiy va imtihon insholarida og'zaki tildagi qisqartmalarni aslo ishlatmang.",
+            example: "'don't' emas 'do not' • 'can't' emas 'cannot' • 'it's' emas 'it is' • 'gonna/wanna' umuman mumkin emas."
+          }
         ]
       }
     },
+    sampleEssay: generateModelEssay(topic, cleanText),
     timestamp: new Date().toISOString()
   };
 }
