@@ -30,19 +30,37 @@ try:
 except Exception:
     pass
 
-# Windows konsolida UTF-8 emoji xatosini oldini olish
+# Windows konsolida UTF-8 emoji xatosini oldini olish va loglarni tezkor chiqarish
 if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace', line_buffering=True)
 if hasattr(sys.stderr, 'reconfigure'):
-    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
-
-BOT_TOKEN = "8676643528:AAEsgk_CWjGEp3JNjMABakJbvZnVta_wPrs"
-BOT_USERNAME = "Write_English_bot"
-API_BASE = f"https://api.telegram.org/bot{BOT_TOKEN}"
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace', line_buffering=True)
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 USERS_FILE = os.path.join(SCRIPT_DIR, "server", "users.json")
 SESSIONS_FILE = os.path.join(SCRIPT_DIR, "server", "telegram_sessions.json")
+
+def load_env_val(key, default=""):
+    val = (os.environ.get(key) or "").strip()
+    if val:
+        return val
+    env_file = os.path.join(SCRIPT_DIR, ".env")
+    if os.path.exists(env_file):
+        try:
+            with open(env_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    stripped = line.strip()
+                    if stripped.startswith(f"{key}="):
+                        v = stripped.split("=", 1)[1].strip().strip('"').strip("'")
+                        if v and not v.startswith("#"):
+                            return v
+        except Exception:
+            pass
+    return default
+
+BOT_TOKEN = load_env_val("TELEGRAM_BOT_TOKEN", "8676643528:AAEsgk_CWjGEp3JNjMABakJbvZnVta_wPrs")
+BOT_USERNAME = load_env_val("VITE_TELEGRAM_BOT_USERNAME", "Write_English_bot")
+API_BASE = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 def get_site_url():
     # 1. Cloud environment variables (Render avtomatik beradigan RENDER_EXTERNAL_URL yoki WEBAPP_URL / SITE_URL)
