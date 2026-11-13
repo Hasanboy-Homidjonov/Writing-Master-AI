@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { sounds } from '../utils/audio';
 import { Globe, ChevronDown, Check, Sun, Moon } from 'lucide-react';
 import { Language } from '../types';
-import { TelegramSignInCard } from './TelegramSignInCard';
+import { GoogleSignInCard } from './GoogleSignInCard';
 
 export const AuthScreen: React.FC = () => {
   const { t, language, setLanguage, theme, toggleTheme } = useApp();
@@ -120,7 +120,7 @@ export const AuthScreen: React.FC = () => {
 
       {/* Main Center Container */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 relative z-10">
-        <TelegramSignInCard isModal={false} />
+        <GoogleSignInCard isModal={false} />
       </main>
 
       {/* Clean Footer */}

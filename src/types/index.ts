@@ -17,6 +17,7 @@ export interface UserProfile {
   role: UserRole;
   isAuthenticated: boolean;
   passwordHash?: string;
+  googleId?: string;
 }
 
 export interface WritingTopic {

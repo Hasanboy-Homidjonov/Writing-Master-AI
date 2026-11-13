@@ -1,7 +1,5 @@
 export const ADMIN_EMAILS = [
-  'hasanboy.azizjonovich@gmail.com',
-  'khomidjonovh@telegram.user',
-  'khomidjonov_h@telegram.user'
+  'hasanboy.azizjonovich@gmail.com'
 ];
 
 export const ADMIN_EMAIL = 'hasanboy.azizjonovich@gmail.com';

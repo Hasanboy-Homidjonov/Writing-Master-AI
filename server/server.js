@@ -4,12 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { spawn } from 'child_process';
-import {
-  createAuthSession,
-  getAuthSessionStatus,
-  processConfirmedUser
-} from './telegramAuthService.js';
+import { OAuth2Client } from 'google-auth-library';
 
 dotenv.config();
 
@@ -18,6 +13,20 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+const GOOGLE_CLIENT_ID =
+  process.env.GOOGLE_CLIENT_ID ||
+  '39484277051-9dudkbhdjiubdt5t21l3r801h9j5gecc.apps.googleusercontent.com';
+
+const ADMIN_EMAILS = (
+  process.env.ADMIN_EMAILS || 'hasanboy.azizjonovich@gmail.com'
+)
+  .toLowerCase()
+  .split(',')
+  .map((e) => e.trim());
+
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+const USERS_FILE = path.join(__dirname, 'users.json');
 
 app.use(cors());
 app.use(express.json());
@@ -31,86 +40,137 @@ app.use((req, res, next) => {
   next();
 });
 
-/**
- * Chiqish (Logout) endpoint
- * POST /api/auth/logout
- */
-app.all('/api/auth/logout', (req, res) => {
-  return res.status(200).json({ success: true, message: 'Muvaffaqiyatli chiqildi' });
-});
-
-/**
- * Render & Production /auth/callback redirect handler
- * Telegram botdan "Saytga o'tish" yoki "Saytga qaytish" bosilganda SPA hash marshrutiga yo'naltirish
- */
-app.get('/auth/callback', (req, res) => {
-  const sessionId = req.query.session_id || req.query.code || '';
-  const status = req.query.status || 'success';
-  return res.redirect(`/#auth=${sessionId}&status=${status}`);
-});
-
-/**
- * 1. Yangi Telegram login sessiyasini yaratish
- * POST /api/auth/telegram/create-session
- */
-app.post('/api/auth/telegram/create-session', (req, res) => {
+// Helper: Foydalanuvchilar bazasini o'qish
+function readUsers() {
   try {
-    const sessionData = createAuthSession();
-    return res.status(200).json({
-      success: true,
-      ...sessionData
+    if (fs.existsSync(USERS_FILE)) {
+      return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('Error reading users.json:', e);
+  }
+  return [];
+}
+
+// Helper: Foydalanuvchilar bazasiga yozish
+function saveUsers(users) {
+  try {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Error writing users.json:', e);
+  }
+}
+
+/**
+ * 1. Google OAuth 2.0 (Google Identity Services) Authentication Endpoint
+ * POST /api/auth/google
+ * Body: { credential }
+ */
+app.post('/api/auth/google', async (req, res) => {
+  const { credential } = req.body;
+
+  if (!credential || typeof credential !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: 'Google ID Token (credential) taqdim etilmadi'
     });
-  } catch (err) {
-    console.error('Error creating telegram session:', err);
-    return res.status(500).json({ success: false, error: 'Server xatoligi' });
-  }
-});
-
-/**
- * 2. Telegram tasdiqlash holatini tekshirish
- * GET /api/auth/telegram/status?code=...
- */
-app.get('/api/auth/telegram/status', (req, res) => {
-  const { code } = req.query;
-  if (!code || typeof code !== 'string') {
-    return res.status(400).json({ success: false, error: 'code talab qilinadi' });
-  }
-
-  const result = getAuthSessionStatus(code);
-  return res.status(200).json({
-    success: true,
-    ...result
-  });
-});
-
-/**
- * 3. Telegram WebApp orqali to'g'ridan-to'g'ri kirish
- * POST /api/auth/telegram/webapp
- */
-app.post('/api/auth/telegram/webapp', (req, res) => {
-  const { tgUser } = req.body;
-  if (!tgUser || !tgUser.id) {
-    return res.status(400).json({ success: false, error: 'tgUser talab qilinadi' });
   }
 
   try {
-    const { user, sessionToken } = processConfirmedUser(tgUser);
+    // Google rasmiy serverlari orqali ID Tokenni tekshirish
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Google tokeni yaroqsiz yoki email mavjud emas'
+      });
+    }
+
+    const email = payload.email.toLowerCase().trim();
+    const name = payload.name || payload.given_name || email.split('@')[0];
+    const picture =
+      payload.picture ||
+      `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`;
+    const googleId = payload.sub;
+    const isAdmin = ADMIN_EMAILS.includes(email);
+
+    const users = readUsers();
+    let user = users.find((u) => u.email && u.email.toLowerCase() === email);
+
+    if (user) {
+      user.name = name;
+      user.avatar = picture;
+      user.googleId = googleId;
+      user.lastLoginAt = new Date().toISOString();
+      user.isAuthenticated = true;
+      if (isAdmin) user.role = 'admin';
+    } else {
+      user = {
+        id: `usr_${Date.now().toString(36)}`,
+        googleId,
+        name,
+        email,
+        avatar: picture,
+        level: isAdmin ? 'C1' : 'B1',
+        coins: isAdmin ? 2500 : 150,
+        completedEssays: isAdmin ? 40 : 0,
+        streakDays: 1,
+        rank: users.length + 1,
+        joinedAt: new Date().toISOString().split('T')[0],
+        lastLoginAt: new Date().toISOString(),
+        role: isAdmin ? 'admin' : 'user',
+        isAuthenticated: true
+      };
+      users.push(user);
+    }
+
+    saveUsers(users);
+
+    // Xavfsiz sessiya tokenini yaratish
+    const tokenPayload = {
+      userId: user.id,
+      email: user.email,
+      googleId,
+      role: user.role,
+      issuedAt: Date.now(),
+      expiresAt: Date.now() + 14 * 24 * 60 * 60 * 1000
+    };
+    const sessionToken = Buffer.from(JSON.stringify(tokenPayload)).toString(
+      'base64url'
+    );
+
     return res.status(200).json({
       success: true,
       user,
       sessionToken
     });
   } catch (err) {
-    console.error('Error in telegram webapp auth:', err);
-    return res.status(500).json({ success: false, error: 'Autentifikatsiyada xatolik' });
+    console.error('Google token verification error:', err.message);
+    return res.status(401).json({
+      success: false,
+      error: 'Google tokeni tasdiqlanmadi: ' + err.message
+    });
   }
+});
+
+/**
+ * 2. Chiqish (Logout) endpoint
+ * POST /api/auth/logout
+ */
+app.all('/api/auth/logout', (req, res) => {
+  return res.status(200).json({ success: true, message: 'Muvaffaqiyatli chiqildi' });
 });
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    service: 'Writing Master Production Server',
+    service: 'Writing Master Google Auth Server',
     time: new Date().toISOString()
   });
 });
@@ -119,61 +179,12 @@ app.get('/api/health', (req, res) => {
 const distPath = path.resolve(__dirname, '..', 'dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
-  app.get('*', (req, res) => {
+  app.use((req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }
 
-// Telegram Botni (bot.py) server bilan birga avtomatik ishga tushirish
-let botProc = null;
-
-function launchTelegramBot() {
-  if (process.env.DISABLE_EMBEDDED_BOT === 'true') {
-    console.log('ℹ️ O\'rnatilgan bot o\'chirilgan (DISABLE_EMBEDDED_BOT=true).');
-    return;
-  }
-
-  const isWindows = process.platform === 'win32';
-  let pyCmd = isWindows ? 'python' : 'python3';
-  if (isWindows && fs.existsSync('C:\\msys64\\ucrt64\\bin\\python.exe')) {
-    pyCmd = 'C:\\msys64\\ucrt64\\bin\\python.exe';
-  }
-  const botPath = path.resolve(__dirname, '..', 'bot.py');
-
-  try {
-    console.log(`🤖 Telegram Bot avtomatik ishga tushirilmoqda: ${pyCmd} bot.py...`);
-    botProc = spawn(pyCmd, [botPath], {
-      stdio: 'inherit',
-      cwd: path.resolve(__dirname, '..'),
-      env: { ...process.env, PYTHONUNBUFFERED: '1' }
-    });
-
-    botProc.on('error', (err) => {
-      console.warn(`[Bot Spawn Notice] ${pyCmd} bilan ishga tushmadi (${err.message}). Agar alohida 'python bot.py' ishlatayotgan bo'lsangiz, bu normal holat.`);
-    });
-
-    botProc.on('exit', (code) => {
-      if (code !== 0 && code !== null) {
-        console.log(`Bot jarayoni to'xtadi (kod: ${code})`);
-      }
-    });
-  } catch (err) {
-    console.warn('[Bot ishga tushirish ogohlantirishi]:', err);
-  }
-}
-
-process.on('SIGINT', () => {
-  if (botProc) botProc.kill();
-  process.exit();
-});
-
-process.on('SIGTERM', () => {
-  if (botProc) botProc.kill();
-  process.exit();
-});
-
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Writing Master Server running on http://0.0.0.0:${PORT}`);
-  // Faqat server ishga tushgandan so'ng botni orqa fonda birga qo'shib yuborish
-  launchTelegramBot();
+  console.log(`🚀 Writing Master Google Auth Server running on http://0.0.0.0:${PORT}`);
+  console.log(`🔑 Google Client ID: ${GOOGLE_CLIENT_ID}`);
 });

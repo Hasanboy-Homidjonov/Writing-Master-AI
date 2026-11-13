@@ -6,7 +6,7 @@ export interface AuthSession {
   user: UserProfile;
   issuedAt: number;
   expiresAt: number;
-  authType: 'telegram' | 'google_oauth' | 'google_credentials';
+  authType: 'google_oauth' | 'google_credentials';
   signature: string;
   isAdminVerified: boolean;
 }
@@ -69,27 +69,14 @@ function generateSecureToken(emailOrId: string, issuedAt: number): string {
   return `wm_${btoa(emailOrId).replace(/=/g, '')}_${issuedAt}_${rand}`;
 }
 
-const ADMIN_TELEGRAM_USERNAMES = ['khomidjonovh', 'khomidjonov_h'];
-const ADMIN_TELEGRAM_IDS = [7034211289];
-
 /**
- * Check if a user is an administrator (Strict verification: verified email, telegram ID, or username)
+ * Check if a user is an administrator (Strict verification: verified admin email)
  */
 export function isUserAdmin(user: Partial<UserProfile>): boolean {
   if (!user) return false;
   const email = (user.email || '').toLowerCase().trim();
-  
   if (ADMIN_EMAILS.some((em) => em.toLowerCase() === email)) return true;
-  
-  // Telegram ID tekshiruvi (eng xavfsiz va soxtalashtirib bo'lmaydigan usul)
-  if ((user as any).telegramId && ADMIN_TELEGRAM_IDS.includes(Number((user as any).telegramId))) return true;
-
-  // Telegram Username tekshiruvi (@KhomidjonovH)
-  const tgUsername = ((user as any).telegramUsername || '').toLowerCase().replace(/^@/, '').trim();
-  if (tgUsername && ADMIN_TELEGRAM_USERNAMES.includes(tgUsername)) return true;
-  if (ADMIN_TELEGRAM_USERNAMES.some((u) => email === `${u}@telegram.user`)) return true;
-
-  return false;
+  return user.role === 'admin';
 }
 
 /**
@@ -97,7 +84,7 @@ export function isUserAdmin(user: Partial<UserProfile>): boolean {
  */
 export function createAuthSession(
   user: UserProfile,
-  authType: 'telegram' | 'google_oauth' | 'google_credentials' = 'telegram',
+  authType: 'google_oauth' | 'google_credentials' = 'google_oauth',
   rawToken?: string
 ): AuthSession {
   const now = Date.now();
@@ -105,7 +92,7 @@ export function createAuthSession(
   // Default session validity: 14 days
   const expiresAt = now + 14 * 24 * 60 * 60 * 1000;
 
-  const cleanEmail = (user.email || `tg_${user.id}@writingmaster.app`).toLowerCase().trim();
+  const cleanEmail = (user.email || `usr_${user.id}@writingmaster.app`).toLowerCase().trim();
   const isAdmin = isUserAdmin(user);
 
   // Ensure role strictly matches

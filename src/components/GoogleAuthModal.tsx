@@ -1,5 +1,5 @@
 import React from 'react';
-import { TelegramSignInCard } from './TelegramSignInCard';
+import { GoogleSignInCard } from './GoogleSignInCard';
 
 interface GoogleAuthModalProps {
   isOpen: boolean;
@@ -16,7 +16,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
-      <TelegramSignInCard
+      <GoogleSignInCard
         isModal={true}
         canCancel={canClose}
         onCancel={onClose}

@@ -25,7 +25,6 @@ import {
 interface AppContextType {
   user: UserProfile;
   isVerifiedSession: boolean;
-  loginWithTelegramAccount: (user: Partial<UserProfile>, rawToken?: string) => void;
   loginWithGoogleAccount: (name: string, email: string, avatar?: string, rawToken?: string) => void;
   verifyUserCredentials: (email: string, password: string) => { success: boolean; error?: string };
   registerNewUser: (name: string, email: string, password: string) => { success: boolean; error?: string };
@@ -319,37 +318,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ADMIN_EMAILS.some(em => em.toLowerCase() === user.email.trim().toLowerCase())
   );
 
-  // Login with Telegram account
-  const loginWithTelegramAccount = (
-    telegramUser: Partial<UserProfile>,
+  // Login with Google OAuth 2.0 account
+  const loginWithGoogleAccount = (
+    name: string,
+    email: string,
+    avatar?: string,
     rawToken?: string
   ) => {
     sounds.playSuccess();
-    const cleanName = (telegramUser.name || 'Hasanboy').trim();
-    const cleanEmail = (telegramUser.email || `tg_${telegramUser.id || 'user'}@telegram.user`).toLowerCase().trim();
-    const isUserAdminRole = isUserAdmin(telegramUser) || ADMIN_EMAILS.some((em) => em.toLowerCase() === cleanEmail);
+    const cleanName = (name || 'Hasanboy').trim();
+    const cleanEmail = (email || 'hasanboy.azizjonovich@gmail.com').toLowerCase().trim();
+    const isUserAdminRole = ADMIN_EMAILS.some((em) => em.toLowerCase() === cleanEmail);
 
     const existing = allUsers.find(
-      (u) => (telegramUser.id && u.id === telegramUser.id) || u.email.toLowerCase() === cleanEmail
+      (u) => u.email.toLowerCase() === cleanEmail
     );
 
     const loggedUser: UserProfile = existing
       ? {
           ...existing,
           name: cleanName || existing.name,
-          avatar: telegramUser.avatar || existing.avatar,
+          avatar: avatar || existing.avatar,
           role: isUserAdminRole ? 'admin' : existing.role || 'user',
           level: (existing.level as CEFRLevel) || (isUserAdminRole ? 'C1' : 'B1'),
           isAuthenticated: true
         }
       : {
-          id: telegramUser.id || 'usr_tg_' + Date.now().toString(36),
+          id: 'usr_' + Date.now().toString(36),
           name: cleanName,
           email: cleanEmail,
           avatar:
-            telegramUser.avatar ||
+            avatar ||
             `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cleanName)}`,
-          level: (telegramUser.level as CEFRLevel) || (isUserAdminRole ? 'C1' : 'B1'),
+          level: isUserAdminRole ? 'C1' : 'B1',
           coins: isUserAdminRole ? 2500 : 150,
           completedEssays: isUserAdminRole ? 40 : 0,
           streakDays: 1,
@@ -359,7 +360,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           isAuthenticated: true
         };
 
-    const session = createAuthSession(loggedUser, 'telegram', rawToken);
+    const session = createAuthSession(loggedUser, 'google_oauth', rawToken);
 
     setUser(session.user);
     setIsVerifiedSession(true);
@@ -378,16 +379,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return [loggedUser, ...prev];
     });
-  };
-
-  // Login with Google account (backward compatibility)
-  const loginWithGoogleAccount = (
-    name: string,
-    email: string,
-    avatar?: string,
-    rawToken?: string
-  ) => {
-    loginWithTelegramAccount({ name, email, avatar }, rawToken);
   };
 
   // Verify credentials for existing accounts (Strict Google account & password check)
@@ -746,7 +737,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         user,
         isVerifiedSession,
-        loginWithTelegramAccount,
         loginWithGoogleAccount,
         verifyUserCredentials,
         registerNewUser,

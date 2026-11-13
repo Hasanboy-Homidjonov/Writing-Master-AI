@@ -54,9 +54,9 @@ export const AppContent: React.FC = () => {
     const handleHashRouting = () => {
       const hash = (window.location.hash || '').toLowerCase().replace(/^#/, '');
 
-      // 1. If unauthenticated, redirect all protected hashes to #login immediately (except Telegram auth payload)
+      // 1. If unauthenticated, redirect all protected hashes to #login immediately
       if (!user.isAuthenticated || !isVerifiedSession) {
-        if (hash && hash !== 'login' && !hash.startsWith('tg_auth') && !hash.startsWith('auth=')) {
+        if (hash && hash !== 'login') {
           window.location.hash = '#login';
         }
         return;
