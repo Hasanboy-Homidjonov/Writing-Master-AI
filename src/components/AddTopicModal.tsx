@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CEFRLevel } from '../types';
 import { autoGenerateQuestions, isValidTopicTitle } from '../data/defaultTopics';
 import { sounds } from '../utils/audio';
@@ -45,7 +45,6 @@ export const AddTopicModal: React.FC<AddTopicModalProps> = ({
   defaultLevel
 }) => {
   const [title, setTitle] = useState('');
-  const [prompt, setPrompt] = useState('');
   const [level, setLevel] = useState<CEFRLevel>(defaultLevel);
   const [questionsText, setQuestionsText] = useState('');
   const [minWords, setMinWords] = useState(LEVEL_PRESETS[defaultLevel].min);
@@ -53,6 +52,20 @@ export const AddTopicModal: React.FC<AddTopicModalProps> = ({
   const [timeMin, setTimeMin] = useState(LEVEL_PRESETS[defaultLevel].time);
   const [isGenerating, setIsGenerating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Reset modal fields whenever opened
+  useEffect(() => {
+    if (isOpen) {
+      setTitle('');
+      setQuestionsText('');
+      setValidationError(null);
+      setLevel(defaultLevel);
+      const preset = LEVEL_PRESETS[defaultLevel];
+      setMinWords(preset.min);
+      setMaxWords(preset.max);
+      setTimeMin(preset.time);
+    }
+  }, [isOpen, defaultLevel]);
 
   if (!isOpen) return null;
 
@@ -103,7 +116,7 @@ export const AddTopicModal: React.FC<AddTopicModalProps> = ({
       finalQuestions = autoGenerateQuestions(title.trim());
     }
 
-    const finalPrompt = prompt.trim() || `Discuss the topic: "${title.trim()}". Support your arguments with real-life examples and reach a well-reasoned conclusion.`;
+    const finalPrompt = `Write an essay discussing "${title.trim()}". Support your arguments with real-life examples and reach a well-reasoned conclusion.`;
 
     onAdd(title.trim(), finalPrompt, finalQuestions, level, minWords, maxWords, timeMin);
     onClose();
@@ -186,20 +199,6 @@ export const AddTopicModal: React.FC<AddTopicModalProps> = ({
               }}
               placeholder="e.g. My home, Friendship, Life in Modern Cities..."
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-2.5 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500"
-            />
-          </div>
-
-          {/* Prompt Description */}
-          <div>
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-              Qisqacha topshiriq / Prompt (Ixtiyoriy):
-            </label>
-            <textarea
-              rows={2}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe the main arguments and give your personal opinion..."
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-2.5 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 resize-none"
             />
           </div>
 

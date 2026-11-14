@@ -221,39 +221,43 @@ export const TopicsView: React.FC<TopicsViewProps> = ({
               key={topic.id}
               className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-md hover:shadow-xl transition-all flex flex-col justify-between hover:-translate-y-1 relative group"
             >
-              {topic.isCustom && (
-                <div className="absolute top-4 right-4 flex items-center gap-1.5">
-                  <span className="bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-extrabold text-[10px] px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
-                    {t.onlyAuthorVisible}
-                  </span>
-                  {isOwner && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm("Ushbu mavzuni o'chirmoqchimisiz?")) {
-                          deleteCustomTopic(topic.id);
-                        }
-                      }}
-                      className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
-                      title="Mavzuni o'chirish"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              )}
-
               <div>
-                {/* Level badge & metrics */}
-                <div className="flex items-center gap-2 mb-3">
+                {/* Level badge & Custom topic badge header */}
+                <div className="flex items-center justify-between gap-2 mb-2.5">
                   <span className="bg-blue-600 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-lg shadow-xs">
                     {t.recommended} {topic.level}
                   </span>
-                  <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
+
+                  {topic.isCustom && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-extrabold text-[10px] px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
+                        {t.onlyAuthorVisible}
+                      </span>
+                      {isOwner && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm("Ushbu mavzuni o'chirmoqchimisiz?")) {
+                              deleteCustomTopic(topic.id);
+                            }
+                          }}
+                          className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                          title="Mavzuni o'chirish"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Metrics: Time & Word Limits */}
+                <div className="flex items-center gap-3 mb-3 text-xs text-slate-400 font-medium">
+                  <span className="flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5 text-slate-400" />
                     <span>{topic.timeLimitMinutes} {t.min}</span>
                   </span>
-                  <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
+                  <span className="flex items-center gap-1">
                     <Type className="w-3.5 h-3.5 text-slate-400" />
                     <span>{topic.recommendedWords.min}-{topic.recommendedWords.max} {t.words}</span>
                   </span>
